@@ -3,7 +3,7 @@ import asyncio
 import base64
 import logging
 from typing import Dict, Optional, Any
-from datetime import datetime
+from datetime import datetime, timezone
 
 from src.services.tts_service import TTSService
 from src.services.base_tts import TTSRequest, BaseTTSService
@@ -252,7 +252,7 @@ class GameTTSManager:
                     tts_duration=duration,
                     tts_status=TTSGeneratedStatus.COMPLETED,
                     event_metadata=metadata,
-                    timestamp=datetime.utcnow(),
+                    timestamp=datetime.now(timezone.utc),
                     is_public=True
                 )
                 

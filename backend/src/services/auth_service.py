@@ -427,7 +427,7 @@ class AuthService:
         """更新最后登录时间"""
         user = AuthService.get_user_by_id(db, user_id)
         if user:
-            setattr(user, 'last_login_at', datetime.utcnow())
+            setattr(user, 'last_login_at', datetime.now(timezone.utc))
             db.commit()
 
     @staticmethod

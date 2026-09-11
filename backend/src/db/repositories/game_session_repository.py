@@ -87,9 +87,9 @@ class GameSessionRepository(BaseRepository[GameSession]):
         # 结束状态
         session.status = GameSessionStatus.ENDED
         # 若未设 finished_at 则设置
-        from datetime import datetime
+        from datetime import datetime, timezone
         if not session.finished_at:
-            session.finished_at = datetime.utcnow()
+            session.finished_at = datetime.now(timezone.utc)
         # 计算总TTS时长（COMPLETED事件）
         total_secs = (
             self.session.query(func.coalesce(func.sum(GameEventDBModel.tts_duration), 0.0))

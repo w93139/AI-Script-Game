@@ -8,7 +8,7 @@ import base64
 import uuid
 import os
 from typing import Optional, Dict, Any, List
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .tts_service import TTSService
 from .base_tts import TTSRequest
@@ -70,7 +70,7 @@ class TTSEventService:
                     character_name=character_name,
                     content=content,
                     tts_status=TTSGeneratedStatus.PENDING,
-                    timestamp=datetime.utcnow()
+                    timestamp=datetime.now(timezone.utc)
                 )
                 
                 db.add(game_event)

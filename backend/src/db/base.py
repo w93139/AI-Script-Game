@@ -2,7 +2,7 @@
 from typing import Dict, Any
 from datetime import datetime
 from sqlalchemy import Column, Integer, DateTime, func
-from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import declarative_base
 
 # SQLAlchemy基类
 SQLAlchemyBase = declarative_base()

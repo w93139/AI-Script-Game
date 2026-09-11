@@ -86,8 +86,8 @@ class GameHistoryService:
         tts_generated = q_events.filter(GameEventDBModel.tts_status=="COMPLETED").count()
         duration = None
         if s.started_at:
-            from datetime import datetime
-            end_time = s.finished_at or datetime.utcnow()
+            from datetime import datetime, timezone
+            end_time = s.finished_at or datetime.now(timezone.utc)
             duration = int((end_time - s.started_at).total_seconds() // 60)
         # 获取script_title
         script_title = None

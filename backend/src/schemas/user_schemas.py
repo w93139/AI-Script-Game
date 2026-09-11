@@ -1,5 +1,5 @@
 """用户相关的Pydantic模式"""
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 import re
@@ -9,7 +9,8 @@ PHONE_PATTERN = re.compile(r'^1[3-9]\d{9}$')
 class SmsCodeRequest(BaseModel):
     phone: str = Field(..., description="中国大陆手机号")
 
-    @validator('phone')
+    @field_validator('phone')
+    @classmethod
     def validate_phone(cls, value):
         if not PHONE_PATTERN.fullmatch(value.strip()):
             raise ValueError('请输入有效的中国大陆手机号')
@@ -27,13 +28,15 @@ class PhoneLogin(BaseModel):
     invite_code: Optional[str] = Field(None, max_length=64, description="首次登录邀请码")
     nickname: Optional[str] = Field(None, min_length=1, max_length=50, description="首次登录昵称")
 
-    @validator('phone')
+    @field_validator('phone')
+    @classmethod
     def validate_phone(cls, value):
         if not PHONE_PATTERN.fullmatch(value.strip()):
             raise ValueError('请输入有效的中国大陆手机号')
         return value.strip()
 
-    @validator('code')
+    @field_validator('code')
+    @classmethod
     def validate_code(cls, value):
         if not value.isdigit():
             raise ValueError('验证码必须为 6 位数字')
@@ -47,13 +50,15 @@ class UserRegister(BaseModel):
     password: str = Field(..., min_length=6, max_length=100, description="密码")
     nickname: Optional[str] = Field(None, max_length=50, description="昵称")
     
-    @validator('username')
+    @field_validator('username')
+    @classmethod
     def validate_username(cls, v):
         if not v.isalnum() and '_' not in v:
             raise ValueError('用户名只能包含字母、数字和下划线')
         return v
     
-    @validator('password')
+    @field_validator('password')
+    @classmethod
     def validate_password(cls, v):
         if len(v) < 6:
             raise ValueError('密码长度至少6位')
@@ -78,7 +83,8 @@ class PasswordChange(BaseModel):
     old_password: str = Field(..., description="旧密码")
     new_password: str = Field(..., min_length=6, max_length=100, description="新密码")
     
-    @validator('new_password')
+    @field_validator('new_password')
+    @classmethod
     def validate_new_password(cls, v):
         if len(v) < 6:
             raise ValueError('新密码长度至少6位')
@@ -101,8 +107,7 @@ class UserResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # 用户简要信息
 class UserBrief(BaseModel):
@@ -112,8 +117,7 @@ class UserBrief(BaseModel):
     nickname: Optional[str]
     avatar_url: Optional[str]
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # 认证令牌
 class Token(BaseModel):
@@ -154,8 +158,7 @@ class GameSessionResponse(BaseModel):
     started_at: Optional[datetime]
     ended_at: Optional[datetime]
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class GameSessionDetail(BaseModel):
     """游戏会话详情模式"""
@@ -170,8 +173,7 @@ class GameSessionDetail(BaseModel):
     ended_at: Optional[datetime]
     # 可以添加更多详细信息
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 # 游戏历史记录
 class GameHistoryResponse(BaseModel):
@@ -186,8 +188,7 @@ class GameHistoryResponse(BaseModel):
     started_at: Optional[datetime]
     ended_at: Optional[datetime]
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class PlayerJoinRequest(BaseModel):
     """玩家加入请求模式"""
@@ -202,7 +203,7 @@ class PlayerStatusUpdate(BaseModel):
 # 游戏会话删除相关模式
 class GameSessionDeleteRequest(BaseModel):
     """删除游戏会话请求模式"""
-    session_ids: List[str] = Field(..., min_items=1, description="要删除的会话ID列表")
+    session_ids: List[str] = Field(..., min_length=1, description="要删除的会话ID列表")
 
 class GameSessionDeleteFailedItem(BaseModel):
     """删除失败的会话项"""

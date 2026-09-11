@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 from typing import Set, Union, Any, Dict, Optional
-from datetime import datetime
+from datetime import datetime, timezone
 from abc import ABC, abstractmethod
 import os
 
@@ -787,7 +787,7 @@ class GameModeHandler:
                                     event_metadata={
                                         "game_phase": session.game_engine.current_phase.value,
                                         "action_type": "ai_dialogue",
-                                        "timestamp": datetime.utcnow().isoformat()
+                                        "timestamp": datetime.now(timezone.utc).isoformat()
                                     }
                                 )
                                 if tts_url:

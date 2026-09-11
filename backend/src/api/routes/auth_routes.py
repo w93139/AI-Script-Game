@@ -39,7 +39,7 @@ def _token_for_user(db: Session, user: User) -> Token:
         token_type="bearer",
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         refresh_token=AuthService.create_refresh_token(data=claims),
-        user=UserResponse.from_orm(user),
+        user=UserResponse.model_validate(user),
     )
 
 @router.post("/sms-code", response_model=SmsCodeResponse, summary="发送手机验证码")
@@ -125,7 +125,7 @@ async def register(
             nickname=user_data.nickname
         )
         
-        return UserResponse.from_orm(user)
+        return UserResponse.model_validate(user)
         
     except HTTPException:
         raise
@@ -170,7 +170,7 @@ async def get_current_user_info(
     current_user: User = Depends(get_current_active_user_from_request)
 ):
     """获取当前用户信息（由认证中间件注入）"""
-    return UserResponse.from_orm(current_user)
+    return UserResponse.model_validate(current_user)
 
 @router.put("/me", response_model=UserResponse, summary="更新用户资料")
 async def update_profile(
@@ -189,7 +189,7 @@ async def update_profile(
             avatar_url=user_update.avatar_url
         )
         
-        return UserResponse.from_orm(updated_user)
+        return UserResponse.model_validate(updated_user)
         
     except HTTPException:
         raise
@@ -258,7 +258,7 @@ async def get_users(
     # 使用中间件验证管理员权限
     current_user = get_current_admin_user_from_request(request)
     users = db.query(User).filter(User.is_active == True).offset(skip).limit(limit).all()
-    return [UserBrief.from_orm(user) for user in users]
+    return [UserBrief.model_validate(user) for user in users]
 
 @router.get("/users/{user_id}", response_model=UserBrief, summary="获取指定用户信息")
 async def get_user_by_id(
@@ -281,7 +281,7 @@ async def get_user_by_id(
             detail="用户不存在"
         )
     
-    return UserBrief.from_orm(user)
+    return UserBrief.model_validate(user)
 
 @router.get("/verify-token", summary="验证令牌")
 async def verify_token(

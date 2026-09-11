@@ -1,7 +1,7 @@
 """游戏事件数据库模型"""
 from sqlalchemy import Column, Integer, String, DateTime, Text, JSON, ForeignKey, Float, Boolean, Index, Enum as SqlEnum
 from sqlalchemy.orm import relationship,Mapped, mapped_column
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 from ..base import BaseSQLAlchemyModel
 from enum import Enum
@@ -35,7 +35,7 @@ class GameEventDBModel(BaseSQLAlchemyModel):
     
     # 其他字段
     event_metadata = Column(JSON, nullable=True)  # 附加数据
-    timestamp = Column(DateTime, nullable=False, index=True, default=datetime.utcnow)
+    timestamp = Column(DateTime, nullable=False, index=True, default=lambda: datetime.now(timezone.utc))
     is_public = Column(Boolean, default=True)  # 是否为公开事件
     
     # 关联关系
