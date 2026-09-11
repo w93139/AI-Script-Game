@@ -13,7 +13,7 @@ from src.fusion.authoring_jobs import AuthoringJobError, AuthoringJobStore
 from src.fusion.authoring_model import AuthoringModel, AuthoringModelError
 from src.fusion.authoring_runner import submit_authoring_job
 from src.fusion.authoring_sources import AuthoringSourceError
-from src.fusion.provider_smoke import load_selected_config
+from src.fusion.provider_config import load_selected_config
 from src.fusion.source_bundles import SourceBundleError, SourceBundleStore
 from src.schemas.authoring import AuthoringRequestV12, AuthoringRequestV13, AuthoringRequestV14, AuthoringRequestV15, AuthoringRequestV16, AuthoringRequestV17, AuthoringRequestV18, AuthoringRequestV19, AuthoringRequestV110, AuthoringRequestV111, AuthoringRequestV112, parse_authoring_request
 from src.schemas.script_package import PackageModel

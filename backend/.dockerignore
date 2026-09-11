@@ -11,3 +11,9 @@ ai_agent.log
 .github/
 Dockerfile
 .dockerignore
+
+# 真实 API 冒烟与探针脚本：只用于人工验证，正式运行路径不依赖它们
+# （配置加载已抽到 src/fusion/provider_config.py）。
+# tests/test_production_imports_no_scaffolding.py 会持续保证这一点成立。
+src/fusion/*_smoke.py
+src/fusion/*_probe.py

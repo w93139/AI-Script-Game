@@ -23,7 +23,7 @@ from src.fusion.authoring_sources import (
 )
 from src.fusion.budget import UsageAmount, normalize_provider_usage
 from src.fusion.package_validation import canonical_json, content_hash, parse_package_json, validate_package
-from src.fusion.provider_smoke import SelectedSmokeConfig
+from src.fusion.provider_config import SelectedSmokeConfig
 from src.fusion.providers import PLAYER_PROVIDER_PROFILES
 from src.schemas.authoring import CompileOutput, CompilerDraftOutput, CompilerDraftOutputV12, CompilerTextDraft, CompilerTextConfirmation, parse_authoring_request
 from src.fusion.authoring_rule_plan import assemble_text_slots, locked_projection, slot_catalog

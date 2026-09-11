@@ -34,12 +34,26 @@ class StorageManager:
         self.is_available: bool = False
         # 根据存储类型设置本地存储路径
         self.local_storage_path: Path = Path(".data")  # 本地存储路径
-        
-        # 根据存储类型初始化
+        self._minio_checked: bool = False
+
+        # 本地存储只是建目录，开销可忽略，仍然在构造时完成。
+        # 对象存储则推迟到第一次真正用到时再连：此前构造函数会同步连接并重试，
+        # 服务不可用时实测阻塞约 6 秒，把一个可选功能变成了启动路径上的依赖。
         if self.config.storage_type.lower() in ["local", "dir"]:
             self._initialize_local_storage()
-        else:
+
+    def _ensure_minio_ready(self) -> bool:
+        """第一次用到对象存储时才建立连接，且只尝试一次。
+
+        连不上不抛异常：存储是可选能力，缺它不应该让整个服务不可用。
+        每次调用都重试同样没有意义——服务真恢复了需要重启或显式重置。
+        """
+        if self.config.storage_type.lower() in ["local", "dir"]:
+            return self.is_available
+        if not self._minio_checked:
+            self._minio_checked = True
             self._initialize_minio_client()
+        return self.is_available
     
     def _initialize_local_storage(self):
         """初始化本地存储"""
@@ -109,7 +123,7 @@ class StorageManager:
         Returns:
             文件的公开访问URL
         """
-        if not self.is_available:
+        if not self._ensure_minio_ready():
             print(f"⚠️ 存储服务不可用，无法上传文件: {filename}")
             return None
             
@@ -182,7 +196,7 @@ class StorageManager:
         Returns:
             (文件内容, 内容类型) 或 None
         """
-        if not self.is_available:
+        if not self._ensure_minio_ready():
             print(f"⚠️ 存储服务不可用，无法获取文件: {object_name}")
             return None
             
@@ -242,7 +256,7 @@ class StorageManager:
     
     def delete_file(self, object_name: str) -> bool:
         """删除文件"""
-        if not self.is_available:
+        if not self._ensure_minio_ready():
             print(f"⚠️ 存储服务不可用，无法删除文件: {object_name}")
             return False
             
@@ -401,7 +415,7 @@ class StorageManager:
         Returns:
             文件的公开访问URL
         """
-        if not self.is_available:
+        if not self._ensure_minio_ready():
             print("⚠️ 存储服务不可用，无法上传TTS音频")
             return None
             
@@ -469,7 +483,7 @@ class StorageManager:
 
     def get_tts_audio(self, file_url: str) -> bytes | None:
         """获取TTS音频文件"""
-        if not self.is_available:
+        if not self._ensure_minio_ready():
             return None
             
         # 从URL解析object_name
@@ -501,7 +515,7 @@ class StorageManager:
     
     def _get_tts_audio_minio(self, object_name: str) -> bytes | None:
         """从MinIO获取TTS音频文件"""
-        if not self.is_available or not self.client:
+        if not self._ensure_minio_ready() or not self.client:
             return None
             
         try:
