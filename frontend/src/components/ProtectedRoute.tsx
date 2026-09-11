@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useAuthStore } from '@/stores/authStore';
 import { Loader2 } from 'lucide-react';
 import { authReturnPath } from '@/lib/authReturnPath';
-import { ensureGuestSession } from '@/lib/guestAccess';
+import { useGuestSession } from '@/hooks/useGuestSession';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -11,49 +10,40 @@ interface ProtectedRouteProps {
   redirectTo?: string;
 }
 
-const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
-  children, 
+const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
+  children,
   requireAuth = true,
   redirectTo = '/auth/login'
 }) => {
   const router = useRouter();
-  const { isAuthenticated, isLoading, anonymousLogin } = useAuthStore();
-  const [isChecking, setIsChecking] = useState(true);
+  // 未登录时先尝试访客模式（后端开启时开发期无需登录），有结论后再决定去留。
+  const { isAuthenticated, isLoading, settled } = useGuestSession();
+
+  // 还不能下结论的几种情况：认证状态未加载、路由未就绪、访客探测未出结果。
+  // 直接推导而不用额外的 state，避免在 effect 里同步 setState 触发连锁渲染。
+  const resolving =
+    isLoading || !router.isReady || (requireAuth && !isAuthenticated && !settled);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      // 等待认证状态加载完成
-      if (isLoading || !router.isReady) {
-        return;
-      }
+    if (resolving) {
+      return;
+    }
 
-      // 如果需要认证但用户未登录，先尝试访客模式（后端开启时开发期无需登录），
-      // 访客模式不可用才重定向到登录页。探测期间保持加载态，避免闪一下登录页。
-      if (requireAuth && !isAuthenticated) {
-        const signedIn = await ensureGuestSession(anonymousLogin);
-        if (signedIn) {
-          return;
-        }
-        setIsChecking(false);
-        router.replace({ pathname: redirectTo, query: { returnUrl: authReturnPath(router.asPath) } });
-        return;
-      }
+    if (requireAuth && !isAuthenticated) {
+      // 访客模式不可用，回到登录页并记住来路。
+      router.replace({ pathname: redirectTo, query: { returnUrl: authReturnPath(router.asPath) } });
+      return;
+    }
 
-      setIsChecking(false);
-
-      // 登录后回到原入口，缺省进入剧本中心。
-      if (!requireAuth && isAuthenticated && 
-          (router.pathname.startsWith('/auth/') || router.pathname === '/auth')) {
-        router.replace(authReturnPath(router.query.returnUrl));
-        return;
-      }
-    };
-
-    checkAuth();
-  }, [isAuthenticated, isLoading, requireAuth, router, redirectTo, anonymousLogin]);
+    // 登录后回到原入口，缺省进入剧本中心。
+    if (!requireAuth && isAuthenticated &&
+        (router.pathname.startsWith('/auth/') || router.pathname === '/auth')) {
+      router.replace(authReturnPath(router.query.returnUrl));
+    }
+  }, [resolving, isAuthenticated, requireAuth, router, redirectTo]);
 
   // 显示加载状态
-  if (isLoading || isChecking) {
+  if (resolving) {
     return (
       <div className="min-h-screen bg-ink flex items-center justify-center">
         <div className="text-center">
@@ -70,7 +60,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   }
 
   // 如果用户已登录但访问认证页面，不渲染内容（等待重定向）
-  if (!requireAuth && isAuthenticated && 
+  if (!requireAuth && isAuthenticated &&
       (router.pathname.startsWith('/auth/') || router.pathname === '/auth')) {
     return null;
   }

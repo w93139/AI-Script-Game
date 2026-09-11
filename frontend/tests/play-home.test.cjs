@@ -36,13 +36,15 @@ function hookRunner() {
   return { hooks, run(callback) { index = 0; const value = callback(); while (pending.length) pending.shift()(); return value; }, unmount() { for (const effect of effects) effect?.cleanup?.(); } };
 }
 
-function harness({library=async()=>({items:[],has_more:false}),releases=async()=>[],recordsOnly=false}={}) {
+function harness({library=async()=>({items:[],has_more:false}),releases=async()=>[],recordsOnly=false,settled=true}={}) {
  const runner=hookRunner(); let current=true, invalidate; let state={isAuthenticated:true,isLoading:false,user:{id:'a'}};
  const module=compile('components/PlayHome.tsx',name=>{
   if(name==='react')return {...React,...runner.hooks};
   if(name==='next/link')return {default:({children,...props})=>React.createElement('a',props,children)};
   if(name==='@/components/AppLayout')return {default:({children})=>children};
   if(name==='@/stores/authStore')return {useAuthStore:()=>state};
+  // 首页没有路由守卫，自行经由该 hook 处理未登录状态（开发期访客模式）。
+  if(name==='@/hooks/useGuestSession')return {useGuestSession:()=>({isAuthenticated:state.isAuthenticated,isLoading:state.isLoading,settled})};
   if(name==='@/services/packagePlayService')return {default:{library},watchPackagePlayAuth:callback=>{invalidate=()=>{current=false;callback();};return {isCurrent:()=>current,dispose(){}};}};
   if(name==='@/services/packagePreviewService')return {default:{releases}};
   return require(name);
@@ -111,4 +113,24 @@ test('mobile menu can close from its trigger with Escape and hidden links become
  nodes(tree,'button').find(n=>n.props['aria-label']==='打开导航').props.onClick();tree=runner.run(()=>C({children:'fixture'}));assert.equal(nodes(tree,'div').find(n=>n.props['aria-label']==='手机导航').props.inert,false);
  tree.props.onKeyDown({key:'Escape',preventDefault(){prevented=true;}});tree=runner.run(()=>C({children:'fixture'}));assert.equal(nodes(tree,'div').find(n=>n.props['aria-label']==='手机导航').props.inert,true);assert.ok(focused&&prevented);
  }finally{runner.unmount();}
+});
+
+test('访客探测出结论前不显示登录提示，避免免登录时先闪一下', async () => {
+ // 后端开着访客模式时，首页应当一直显示"正在确认"直到会话建立，
+ // 而不是先渲染"登录并继续"再跳走。
+ const pending = harness({settled:false, recordsOnly:false});
+ pending.state({isAuthenticated:false,isLoading:false,user:null});
+ try {
+  const html = renderToStaticMarkup(pending.home());
+  assert.match(html, /正在确认登录状态/);
+  assert.doesNotMatch(html, /登录并继续/);
+ } finally { pending.unmount(); }
+
+ // 探测有结论且确实没有访客模式时，才回到原来的登录提示。
+ const resolved = harness({settled:true, recordsOnly:false});
+ resolved.state({isAuthenticated:false,isLoading:false,user:null});
+ try {
+  const html = renderToStaticMarkup(resolved.home());
+  assert.match(html, /登录并继续/);
+ } finally { resolved.unmount(); }
 });

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import AppLayout from '@/components/AppLayout';
 import { useAuthStore } from '@/stores/authStore';
+import { useGuestSession } from '@/hooks/useGuestSession';
 import packagePlayService, { watchPackagePlayAuth, type PlayLibraryItem } from '@/services/packagePlayService';
 import packagePreviewService, { type PreviewRelease } from '@/services/packagePreviewService';
 
@@ -102,9 +103,13 @@ export function PlayerLibrary({ recordsOnly = false }: { recordsOnly?: boolean }
 }
 
 export default function PlayHome({ recordsOnly = false }: { recordsOnly?: boolean }) {
-  const { user, isAuthenticated, isLoading } = useAuthStore();
+  const { user } = useAuthStore();
+  // 游戏入口页没有路由守卫，自行处理未登录状态。开发期后端开启访客模式时，
+  // 这里会静默建立访客会话；探测出结论前不显示"登录并继续"，否则免登录也会先闪一下。
+  const { isAuthenticated, isLoading, settled } = useGuestSession();
+  const resolving = isLoading || (!isAuthenticated && !settled);
   return <AppLayout><div className="mx-auto max-w-5xl px-5 py-8 sm:px-8 md:py-12">
     <header className="mb-8 flex flex-wrap items-start justify-between gap-4"><div><p className="text-xs text-brass">人生海海</p><h1 className="mt-2 font-dossier text-3xl">{recordsOnly ? '我的游戏记录' : '每个故事，都由你走进去'}</h1><p className="mt-3 text-sm leading-6 text-mist">{recordsOnly ? '继续未完的推理，或重温已经揭晓的故事。' : '独自进入故事，与 AI 角色交流，寻找属于你的答案。'}</p></div>{recordsOnly && <Link className={secondary} href="/">返回首页</Link>}</header>
-    {isLoading ? <p role="status">正在确认登录状态……</p> : isAuthenticated && user ? <PlayerLibrary key={user.id} recordsOnly={recordsOnly} /> : <section className={card}><h2 className="text-xl">开始你的故事</h2><p className="mt-3 text-sm text-mist">登录后选择剧本，也可以继续之前保存的游戏。</p><Link className={`mt-5 ${action}`} href={`/auth/login?returnUrl=${encodeURIComponent(recordsOnly ? '/play/records' : '/')}`}>登录并继续</Link></section>}
+    {resolving ? <p role="status">正在确认登录状态……</p> : isAuthenticated && user ? <PlayerLibrary key={user.id} recordsOnly={recordsOnly} /> : <section className={card}><h2 className="text-xl">开始你的故事</h2><p className="mt-3 text-sm text-mist">登录后选择剧本，也可以继续之前保存的游戏。</p><Link className={`mt-5 ${action}`} href={`/auth/login?returnUrl=${encodeURIComponent(recordsOnly ? '/play/records' : '/')}`}>登录并继续</Link></section>}
   </div></AppLayout>;
 }
