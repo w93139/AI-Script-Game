@@ -68,6 +68,8 @@ export interface Token {
   access_token: string;
   token_type: string;
   expires_in: number;
+  /** 访问令牌有效期是小时级，用它在后台静默换发新令牌。 */
+  refresh_token?: string | null;
   user: User;
 }
 

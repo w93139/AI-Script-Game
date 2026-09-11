@@ -42,7 +42,7 @@ export const useAuthStore = create<AuthState>()(
           const response = await authService.login(credentials);
           
           // 保存token到localStorage
-          authService.setToken(response.access_token);
+          authService.setSession(response);
           
           set({
             user: response.user,
@@ -65,7 +65,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           set({ isLoading: true, error: null });
           const response = await authService.phoneLogin(credentials);
-          authService.setToken(response.access_token);
+          authService.setSession(response);
           set({ user: response.user, isAuthenticated: true, isLoading: false, error: null });
         } catch (error) {
           set({
@@ -83,7 +83,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           set({ isLoading: true, error: null });
           const response = await authService.anonymousLogin();
-          authService.setToken(response.access_token);
+          authService.setSession(response);
           set({
             user: response.user,
             isAuthenticated: true,

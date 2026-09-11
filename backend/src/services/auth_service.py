@@ -1,25 +1,44 @@
 """用户认证服务"""
+import logging
 import os
 import hmac
 import secrets
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional, Union
+from uuid import uuid4
 from pwdlib import PasswordHash
 from pwdlib.hashers.argon2 import Argon2Hasher
 from pwdlib.hashers.bcrypt import BcryptHasher
 from jose import JWTError, jwt  # type: ignore
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
+from src.core.redis_client import RedisError, get_redis_client
+from src.core.security_preflight import get_secret_key, is_production
 from src.db.models.user import User
 from src.schemas.user_schemas import TokenData
+
+logger = logging.getLogger(__name__)
 
 # 新密码使用 Argon2；BcryptHasher 只用于兼容已有 bcrypt 密码。
 password_hash = PasswordHash((Argon2Hasher(), BcryptHasher()))
 
 # JWT配置
-SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-this-in-production")
+#
+# 密钥不再在导入期固化为模块常量：此前的写法带有一个写死在源码里的兜底值，
+# 部署时漏配 SECRET_KEY 也能正常启动，等于用一把公开的钥匙签发所有令牌。
+# 现在统一由 security_preflight 解析——生产环境缺失会在启动自检时被拒绝，
+# 开发环境则退回到进程内一次性随机密钥。
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 24 * 60* 30))
+
+# 默认 2 小时。长效令牌一旦泄露，影响窗口过长（历史默认是 30 天）。
+# 正常用户由续期凭条（refresh token）保持登录，不会频繁看到重新登录。
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 120))
+
+# 续期凭条有效期，决定"多久不用就需要重新登录"。
+REFRESH_TOKEN_EXPIRE_MINUTES = int(os.getenv("REFRESH_TOKEN_EXPIRE_MINUTES", 30 * 24 * 60))
+
+# 同一枚短信验证码允许的最大尝试次数，防止六位数字被穷举。
+SMS_CODE_MAX_ATTEMPTS = int(os.getenv("SMS_CODE_MAX_ATTEMPTS", 5))
 
 class AuthService:
     """认证服务类"""
@@ -35,36 +54,101 @@ class AuthService:
         return password_hash.hash(password)
     
     @staticmethod
-    def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
-        """创建访问令牌"""
+    def _encode_token(data: dict, token_type: str, expires_delta: timedelta) -> str:
+        """签发一枚带编号和类型的令牌。
+
+        ``jti`` 是这枚令牌的唯一编号，登出或账号出事时据此挂失；
+        ``type`` 区分访问令牌与续期凭条，防止拿续期凭条直接访问接口。
+        """
+        now = datetime.now(timezone.utc)
         to_encode = data.copy()
-        if expires_delta:
-            expire = datetime.utcnow() + expires_delta
-        else:
-            expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        
-        to_encode.update({"exp": expire})
-        encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-        return encoded_jwt
-    
+        to_encode.update({
+            "exp": now + expires_delta,
+            "iat": now,
+            "jti": uuid4().hex,
+            "type": token_type,
+        })
+        return jwt.encode(to_encode, get_secret_key(), algorithm=ALGORITHM)
+
     @staticmethod
-    def verify_token(token: str) -> TokenData:
-        """验证令牌"""
+    def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+        """创建访问令牌（默认 2 小时）"""
+        return AuthService._encode_token(
+            data,
+            "access",
+            expires_delta or timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
+        )
+
+    @staticmethod
+    def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+        """创建续期凭条。
+
+        访问令牌收敛到小时级后，用它在后台静默换取新的访问令牌，
+        使用者不会频繁被要求重新登录。
+        """
+        return AuthService._encode_token(
+            data,
+            "refresh",
+            expires_delta or timedelta(minutes=REFRESH_TOKEN_EXPIRE_MINUTES),
+        )
+
+    @staticmethod
+    def _revocation_key(jti: str) -> str:
+        return f"auth:token:revoked:{jti}"
+
+    @staticmethod
+    def is_token_revoked(jti: str) -> bool:
+        """该编号的令牌是否已被挂失。
+
+        缓存不可用时按"未挂失"处理并记录错误日志：否则一次 Redis 抖动
+        会让全站登录失效。代价是挂失名单在缓存故障期间不生效，
+        因此这条日志需要接入告警。
+        """
+        if not jti:
+            return False
         try:
-            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            user_id: int = payload.get("user_id")  # type: ignore
-            username: str = payload.get("sub")  # type: ignore
-            
-            if user_id is None or username is None:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="无效的认证令牌",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
-            
-            token_data = TokenData(user_id=user_id, username=username)
-            return token_data
-            
+            return bool(get_redis_client().exists(AuthService._revocation_key(jti)))
+        except RedisError:
+            logger.error("令牌挂失名单不可用，本次按未挂失放行；请检查 Redis", exc_info=True)
+            return False
+
+    @staticmethod
+    def revoke_token(token: str) -> bool:
+        """挂失一枚令牌，使其在剩余有效期内不再被接受。"""
+        try:
+            payload = jwt.decode(
+                token,
+                get_secret_key(),
+                algorithms=[ALGORITHM],
+                options={"verify_exp": False},
+            )
+        except JWTError:
+            return False
+
+        jti = payload.get("jti")
+        if not jti:
+            # 自检模块启用前签发的旧令牌没有编号，无法单独挂失。
+            return False
+
+        expires_at = payload.get("exp")
+        remaining = 60
+        if isinstance(expires_at, (int, float)):
+            remaining = int(expires_at - datetime.now(timezone.utc).timestamp())
+        if remaining <= 0:
+            return True  # 已过期，无需再挂失
+
+        try:
+            get_redis_client().setex(AuthService._revocation_key(jti), remaining, "1")
+            return True
+        except RedisError:
+            logger.error("写入令牌挂失名单失败；该令牌在过期前仍然有效", exc_info=True)
+            return False
+
+    @staticmethod
+    def verify_token(token: str, expected_type: str = "access") -> TokenData:
+        """验证令牌：签名、有效期、类型、是否已挂失，缺一不可。"""
+        try:
+            payload = jwt.decode(token, get_secret_key(), algorithms=[ALGORITHM])
         except JWTError as e:
             if "expired" in str(e).lower():
                 raise HTTPException(
@@ -72,12 +156,36 @@ class AuthService:
                     detail="令牌已过期",
                     headers={"WWW-Authenticate": "Bearer"},
                 )
-            else:
-                raise HTTPException(
-                    status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="无效的认证令牌",
-                    headers={"WWW-Authenticate": "Bearer"},
-                )
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="无效的认证令牌",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        invalid = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="无效的认证令牌",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+        user_id: int = payload.get("user_id")  # type: ignore
+        username: str = payload.get("sub")  # type: ignore
+        if user_id is None or username is None:
+            raise invalid
+
+        # 令牌类型必须匹配：续期凭条不能当访问令牌直接调接口，反之亦然。
+        # 历史令牌没有 type 字段，按访问令牌处理以免升级当天全员掉线。
+        if payload.get("type", "access") != expected_type:
+            raise invalid
+
+        if AuthService.is_token_revoked(payload.get("jti", "")):
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="登录已失效，请重新登录",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        return TokenData(user_id=user_id, username=username)
     
     @staticmethod
     def get_user_from_token(db: Session, token: str) -> Optional[User]:
@@ -126,14 +234,19 @@ class AuthService:
 
     @staticmethod
     def send_sms_code(phone: str) -> dict:
-        """Store a short-lived OTP in Redis. Mock mode returns the code to the local UI."""
-        from redis import Redis
-        from redis.exceptions import RedisError
+        """签发一次性验证码并存入 Redis。
 
-        redis_client = Redis.from_url(
-            os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-            decode_responses=True,
-        )
+        模拟模式只用于本机开发，且只在本机开发时才会把验证码回显给调用方：
+
+        * 验证码始终随机生成。此前默认是固定的 ``123456``，等于所有账号共用
+          一个人人皆知的口令。``SMS_MOCK_CODE`` 仍可显式指定，便于自动化测试，
+          但生产环境根本走不到模拟模式。
+        * ``dev_code`` 只在非生产环境返回。此前它无条件写进响应体，
+          任何人只要知道手机号，问一次就能拿到验证码登录该账号。
+        * 生产环境如果仍是模拟模式，直接拒绝服务——启动自检本应已拦下这种
+          部署，这里是第二道防线，避免运行期被改成模拟模式后无声降级。
+        """
+        redis_client = get_redis_client()
         rate_key = f"auth:sms:rate:{phone}"
         code_key = f"auth:sms:code:{phone}"
         try:
@@ -144,8 +257,11 @@ class AuthService:
             provider = os.getenv("SMS_PROVIDER", "mock").lower()
             if provider != "mock":
                 raise HTTPException(status_code=503, detail="真实短信服务尚未配置")
+            if is_production():
+                logger.error("生产环境仍在使用模拟短信，已拒绝发送验证码")
+                raise HTTPException(status_code=503, detail="短信服务尚未配置，暂时无法登录")
 
-            code = os.getenv("SMS_MOCK_CODE", "123456") or f"{secrets.randbelow(1000000):06d}"
+            code = os.getenv("SMS_MOCK_CODE") or f"{secrets.randbelow(1000000):06d}"
             redis_client.setex(code_key, 300, code)
             redis_client.setex(rate_key, 60, "1")
             return {
@@ -161,17 +277,32 @@ class AuthService:
 
     @staticmethod
     def verify_sms_code(phone: str, code: str) -> None:
-        from redis import Redis
+        """校验验证码；无论成功失败都只允许尝试有限次。
 
-        redis_client = Redis.from_url(
-            os.getenv("REDIS_URL", "redis://localhost:6379/0"),
-            decode_responses=True,
-        )
+        此前验证码在有效期内可以无限次猜测，六位数字在五分钟里被穷举完全可行。
+        现在每个手机号的每一枚验证码最多接受 5 次尝试，超出即作废并要求重新获取。
+        """
+        redis_client = get_redis_client()
         key = f"auth:sms:code:{phone}"
+        attempt_key = f"auth:sms:attempt:{phone}"
+
+        try:
+            attempts = redis_client.incr(attempt_key)
+            if attempts == 1:
+                redis_client.expire(attempt_key, 300)
+        except RedisError as exc:
+            raise HTTPException(status_code=503, detail="验证码服务暂不可用") from exc
+
+        if attempts > SMS_CODE_MAX_ATTEMPTS:
+            redis_client.delete(key)
+            raise HTTPException(status_code=429, detail="验证码尝试次数过多，请重新获取")
+
         expected = redis_client.get(key)
         if not expected or not hmac.compare_digest(str(expected), code):
             raise HTTPException(status_code=400, detail="验证码错误或已过期")
+
         redis_client.delete(key)
+        redis_client.delete(attempt_key)
 
     @staticmethod
     def authenticate_or_create_phone_user(

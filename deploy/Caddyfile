@@ -1,12 +1,19 @@
 {$SITE_ADDRESS::80} {
     encode zstd gzip
-    @backend path /api/* /health /docs* /redoc* /openapi.json /static/*
+
+    # 接口说明书不再经由反向代理对外暴露。后端在 ENV=production 时已经不再挂载
+    # 这些路由，这里是第二道防线：即使有人临时把 ENABLE_PUBLIC_API_DOCS 打开，
+    # 也不会顺带从公网可达。需要查看时请走内网或本机端口。
+    @api_docs path /docs /docs/* /redoc /redoc/* /openapi.json
+    respond @api_docs 404
+
+    @backend path /api/* /health /static/*
     reverse_proxy @backend backend:8010
     reverse_proxy frontend:8009
+
     header {
         X-Content-Type-Options nosniff
         Referrer-Policy strict-origin-when-cross-origin
         -Server
     }
 }
-

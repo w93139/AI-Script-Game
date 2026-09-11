@@ -65,6 +65,9 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
             AuthRule(r"^/api/auth/sms-code", AuthLevel.NONE, ["POST"]),
             AuthRule(r"^/api/auth/phone-login", AuthLevel.NONE, ["POST"]),
             AuthRule(r"^/api/auth/anonymous-login", AuthLevel.NONE, ["POST"]),
+            # 续期凭条在请求体里而不是 Authorization 头里，因此这里必须免鉴权，
+            # 否则访问令牌一过期就永远换不出新的。凭条本身在处理函数内校验。
+            AuthRule(r"^/api/auth/refresh", AuthLevel.NONE, ["POST"]),
             AuthRule(r"^/api/auth/verify-token", AuthLevel.NONE, ["POST"]),
             
             # 公开的剧本搜索和浏览

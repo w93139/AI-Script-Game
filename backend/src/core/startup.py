@@ -10,7 +10,11 @@ def initialize_application() -> None:
     """
     from src.core.config import config
     from src.core.dependency_container import configure_services
+    from src.core.security_preflight import enforce_security_configuration
     from src.db.session import get_db_session, init_database
+
+    # 安全自检放在最前面：不安全的配置不应该有机会连上数据库或对外提供服务。
+    enforce_security_configuration()
 
     configure_services()
     print("依赖注入容器配置完成")

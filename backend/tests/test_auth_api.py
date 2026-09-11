@@ -10,16 +10,33 @@ class TestAuthAPI:
     """认证API测试类"""
     
     def test_register_user(self, mock_db_session):
-        """测试用户注册"""
+        """用户名密码注册默认已关闭，应明确返回 410 而不是静默可用。
+
+        该端点保留是为了给旧客户端一个清楚的答复：注册方式已改为手机验证码。
+        只有显式设置 ALLOW_LEGACY_REGISTRATION=true 才会重新开放，
+        由下一个用例覆盖。
+        """
         response = client.post("/api/auth/register", json={
             "username": "testuser",
             "email": "test@example.com",
             "password": "testpassword123",
             "nickname": "Test User"
         })
-        
-        # 注册可能成功、失败或因服务器问题失败
-        assert response.status_code in [200, 400, 409, 500]
+
+        assert response.status_code == 410
+        assert "手机号验证码" in response.json()["detail"]
+
+    def test_register_user_enabled_by_explicit_opt_in(self, mock_db_session, monkeypatch):
+        """显式开启旧注册后，端点不再返回 410。"""
+        monkeypatch.setenv("ALLOW_LEGACY_REGISTRATION", "true")
+        response = client.post("/api/auth/register", json={
+            "username": "testuser",
+            "email": "test@example.com",
+            "password": "testpassword123",
+            "nickname": "Test User"
+        })
+
+        assert response.status_code != 410
     
     def test_register_user_missing_fields(self):
         """测试用户注册缺少必要字段"""

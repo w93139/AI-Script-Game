@@ -8,9 +8,16 @@ from src.core.auth_middleware import (
     get_current_active_user_from_request,
     get_current_admin_user_from_request,
 )
+from src.core.rate_limit import (
+    clear_login_guard,
+    guard_login,
+    guard_refresh,
+    guard_sms,
+)
+from src.core.security_preflight import is_production
 from src.schemas.user_schemas import (
     UserRegister, UserLogin, UserResponse, UserUpdate, PasswordChange,
-    Token, UserBrief, SmsCodeRequest, SmsCodeResponse, PhoneLogin
+    Token, UserBrief, SmsCodeRequest, SmsCodeResponse, PhoneLogin, RefreshRequest
 )
 from src.db.models.user import User
 from src.core.container_integration import get_db_session_depends
@@ -21,8 +28,9 @@ router = APIRouter(prefix="/api/auth", tags=["用户认证"])
 def _token_for_user(db: Session, user: User) -> Token:
     if user.is_active is False:
         raise HTTPException(status_code=401, detail="用户账户已被禁用")
+    claims = {"sub": user.username, "user_id": getattr(user, "id")}
     access_token = AuthService.create_access_token(
-        data={"sub": user.username, "user_id": getattr(user, "id")},
+        data=claims,
         expires_delta=timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES),
     )
     AuthService.update_last_login(db, getattr(user, "id"))
@@ -30,18 +38,54 @@ def _token_for_user(db: Session, user: User) -> Token:
         access_token=access_token,
         token_type="bearer",
         expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        refresh_token=AuthService.create_refresh_token(data=claims),
         user=UserResponse.from_orm(user),
     )
 
 @router.post("/sms-code", response_model=SmsCodeResponse, summary="发送手机验证码")
-async def send_sms_code(data: SmsCodeRequest):
-    return SmsCodeResponse(**AuthService.send_sms_code(data.phone))
+async def send_sms_code(request: Request, data: SmsCodeRequest):
+    # 同一手机号和同一来源都有小时级上限，验证码不能被无限索取。
+    guard_sms(request, data.phone)
+    result = AuthService.send_sms_code(data.phone)
+    if is_production():
+        # 双保险：生产环境永远不把验证码回显给调用方。
+        result.pop("dev_code", None)
+    return SmsCodeResponse(**result)
 
 @router.post("/phone-login", response_model=Token, summary="手机号验证码登录或首次注册")
-async def phone_login(data: PhoneLogin, db: Session = get_db_session_depends()):
+async def phone_login(
+    request: Request,
+    data: PhoneLogin,
+    db: Session = get_db_session_depends(),
+):
+    guard_login(request, data.phone)
     user = AuthService.authenticate_or_create_phone_user(
         db, data.phone, data.code, data.invite_code, data.nickname
     )
+    clear_login_guard(data.phone)
+    return _token_for_user(db, user)
+
+@router.post("/refresh", response_model=Token, summary="用续期凭条换取新的访问令牌")
+async def refresh_access_token(
+    request: Request,
+    data: RefreshRequest,
+    db: Session = get_db_session_depends(),
+):
+    """访问令牌到期后在后台静默换新，使用者无需重新登录。
+
+    换发时会挂失用过的这张续期凭条并下发新的一张，因此同一张凭条只能用一次；
+    凭条被盗用后，真实用户的下一次换发就会失败，异常可以被发现。
+    """
+    guard_refresh(request)
+    token_data = AuthService.verify_token(data.refresh_token, expected_type="refresh")
+    if token_data.username is None:
+        raise HTTPException(status_code=401, detail="无效的续期凭条")
+
+    user = AuthService.get_user_by_username(db, token_data.username)
+    if user is None:
+        raise HTTPException(status_code=401, detail="无效的续期凭条")
+
+    AuthService.revoke_token(data.refresh_token)
     return _token_for_user(db, user)
 
 @router.post("/anonymous-login", response_model=Token, summary="匿名登录")
@@ -58,21 +102,7 @@ async def anonymous_login(
     user = AuthService.get_or_create_guest_user(
         db, config.guest_username, config.guest_email
     )
-
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = AuthService.create_access_token(
-        data={"sub": user.username, "user_id": getattr(user, "id")},
-        expires_delta=access_token_expires,
-    )
-
-    AuthService.update_last_login(db, getattr(user, "id"))
-
-    return Token(
-        access_token=access_token,
-        token_type="bearer",
-        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
-        user=UserResponse.from_orm(user),
-    )
+    return _token_for_user(db, user)
 
 @router.post("/register", response_model=UserResponse, summary="用户注册")
 async def register(
@@ -107,11 +137,14 @@ async def register(
 
 @router.post("/login", response_model=Token, summary="用户登录")
 async def login(
+    request: Request,
     user_data: UserLogin,
     db: Session = get_db_session_depends()
 ):
     """用户登录"""
-    # 认证用户
+    # 按账号和来源分别限流，密码不能被无限次尝试。
+    guard_login(request, user_data.username)
+
     user = AuthService.authenticate_user(db, user_data.username, user_data.password)
     if not user:
         raise HTTPException(
@@ -119,7 +152,7 @@ async def login(
             detail="用户名或密码错误",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     # 检查用户是否激活
     if user.is_active is False:  # 使用显式字段比较，避免SQLAlchemy布尔比较问题
         raise HTTPException(
@@ -127,23 +160,10 @@ async def login(
             detail="用户账户已被禁用",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
-    # 创建访问令牌
-    access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-    access_token = AuthService.create_access_token(
-        data={"sub": user.username, "user_id": getattr(user, 'id')},  # 获取实际的id值
-        expires_delta=access_token_expires
-    )
-        
-    # 更新最后登录时间
-    AuthService.update_last_login(db, getattr(user, 'id'))  # 获取实际的id值
-    
-    return Token(
-        access_token=access_token,
-        token_type="bearer",
-        expires_in=ACCESS_TOKEN_EXPIRE_MINUTES * 60,  # 转换为秒
-        user=UserResponse.from_orm(user)
-    )
+
+    # 登录成功后清零该账号的失败计数，正常用户不会被历史失败拖累。
+    clear_login_guard(user_data.username)
+    return _token_for_user(db, user)
 
 @router.get("/me", response_model=UserResponse, summary="获取当前用户信息")
 async def get_current_user_info(
@@ -213,12 +233,19 @@ async def change_password(
 
 @router.post("/logout", summary="用户登出")
 async def logout(
-    current_user: User = Depends(get_current_active_user_from_request)
+    request: Request,
+    current_user: User = Depends(get_current_active_user_from_request),
 ):
-    """用户登出"""
-    # 注意：JWT是无状态的，实际的登出需要在客户端删除令牌
-    # 这里只是提供一个登出端点，可以用于记录日志等
-    return {"message": "登出成功"}
+    """用户登出，并让本次使用的令牌立即失效。
+
+    此前登出只是让前端把令牌删掉，那枚令牌在服务端依然被接受，
+    泄露后无法收回。现在会把它的编号写进挂失名单，剩余有效期内一律拒绝。
+    """
+    authorization = request.headers.get("Authorization", "")
+    revoked = False
+    if authorization.startswith("Bearer "):
+        revoked = AuthService.revoke_token(authorization[7:])
+    return {"message": "登出成功", "token_revoked": revoked}
 
 @router.get("/users", response_model=list[UserBrief], summary="获取用户列表")
 async def get_users(

@@ -16,6 +16,7 @@ from src.core.environment import load_project_environment
 
 load_project_environment()
 
+from src.core.security_preflight import is_production
 from src.core.websocket_server import game_server
 from src.core.startup import initialize_application
 from src.services.auth_service import AuthService
@@ -84,7 +85,28 @@ async def lifespan(app: FastAPI):
             print(f"数据库关闭失败: {e}")
 
 
-app = FastAPI(title="人生海海",docs_url="/docs",redoc_url="/redoc",lifespan=lifespan)
+# 接口说明书（/docs、/redoc、/openapi.json）会完整列出全部接口、参数和数据结构。
+# 此前它对公网无条件开放，等于把整套接口目录贴在门口。开发环境保留以便调试，
+# 生产环境默认关闭；确需开放时设置 ENABLE_PUBLIC_API_DOCS=true 显式承担风险。
+_expose_api_docs = (
+    not is_production()
+    or os.getenv("ENABLE_PUBLIC_API_DOCS", "false").lower() == "true"
+)
+
+app = FastAPI(
+    title="人生海海",
+    docs_url="/docs" if _expose_api_docs else None,
+    redoc_url="/redoc" if _expose_api_docs else None,
+    openapi_url="/openapi.json" if _expose_api_docs else None,
+    lifespan=lifespan,
+)
+
+
+# httpx 默认在 INFO 级别打印每个请求的完整 URL。本服务刻意不把外部输入写进
+# 日志正文，但这条库日志会把路径参数（可能是他人标识或私有编号）原样带进来，
+# 出站调用时还可能包含查询串里的凭据。收紧到 WARNING，只保留异常信息。
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 
 @app.middleware("http")
@@ -108,17 +130,27 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
     logger = logging.getLogger(__name__)
     
     # 记录详细的错误信息
+    # 只回报"哪个字段、错在哪类"，绝不回显收到的原始值。
+    # 校验失败的请求可能携带私本正文、令牌或他人标识；把它原样写进响应体和
+    # 日志，会让一个格式错误变成信息泄露，也与本服务不记录请求正文的约定相悖。
     error_details = []
     for error in exc.errors():
         error_details.append({
             "field": ".".join(str(x) for x in error["loc"]),
             "message": error["msg"],
             "type": error["type"],
-            "input": error.get("input")
         })
-    
-    logger.error(f"请求验证失败 - URL: {request.url}, 错误详情: {error_details}")
-    
+
+    # 同理只记录路由模板与字段名，不记录完整 URL（路径参数和查询串同样是外部输入）。
+    route = request.scope.get("route")
+    route_template = getattr(route, "path", None) or "unmatched"
+    logger.error(
+        "请求验证失败 - 方法: %s, 路由: %s, 字段: %s",
+        request.method,
+        route_template,
+        [item["field"] for item in error_details],
+    )
+
     return JSONResponse(
         status_code=422,
         content={

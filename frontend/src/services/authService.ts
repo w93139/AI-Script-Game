@@ -19,14 +19,18 @@ class AuthService {
     this.baseUrl = config.api.baseUrl;
   }
 
-  private async request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  private async request<T>(
+    endpoint: string,
+    options: RequestInit = {},
+    allowRefresh: boolean = true,
+  ): Promise<T> {
     const url = `${this.baseUrl}${endpoint}`;
     const token = this.getToken();
-    
+
     const defaultHeaders: Record<string, string> = {
       'Content-Type': 'application/json',
     };
-    
+
     if (token) {
       defaultHeaders['Authorization'] = `Bearer ${token}`;
     }
@@ -40,8 +44,17 @@ class AuthService {
     });
 
     if (!response.ok) {
-      // 401状态码拦截器：自动退出登录
+      // 401状态码拦截器
       if (response.status === 401) {
+        // 访问令牌有效期是小时级，过期属于正常情况。先用续期凭条静默换一张新的
+        // 再重试本次请求；只有换发也失败，才说明登录真的结束了。
+        if (allowRefresh && this.getRefreshToken()) {
+          const renewed = await this.renewSession();
+          if (renewed) {
+            return this.request<T>(endpoint, options, false);
+          }
+        }
+
         const returnPath = typeof window !== 'undefined'
           && !/^\/auth(?:\/|$)/i.test(window.location.pathname)
           ? authReturnPath(window.location.pathname + window.location.search + window.location.hash)
@@ -52,7 +65,7 @@ class AuthService {
           window.location.href = '/auth/login?returnUrl=' + encodeURIComponent(returnPath);
         }
       }
-      
+
       const errorData = await response.json().catch(() => ({ detail: 'Network error' }));
       throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
     }
@@ -60,10 +73,56 @@ class AuthService {
     return response.json();
   }
 
+  /**
+   * 用续期凭条换一张新的访问令牌。
+   *
+   * 多个请求同时收到 401 时只会真正换发一次：后到的请求等待同一个换发结果，
+   * 否则并发刷新会互相作废对方刚拿到的凭条（服务端的凭条是一次性的）。
+   */
+  private async renewSession(): Promise<boolean> {
+    if (this.renewal) {
+      return this.renewal;
+    }
+
+    this.renewal = (async (): Promise<boolean> => {
+      const refreshToken = this.getRefreshToken();
+      if (!refreshToken) {
+        return false;
+      }
+      try {
+        const response = await fetch(`${this.baseUrl}/api/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+        if (!response.ok) {
+          return false;
+        }
+        this.setSession(await response.json());
+        return true;
+      } catch {
+        return false;
+      } finally {
+        this.renewal = null;
+      }
+    })();
+
+    return this.renewal;
+  }
+
+  private renewal: Promise<boolean> | null = null;
+
   // Token 管理
   getToken(): string | null {
     if (typeof window !== 'undefined') {
       return localStorage.getItem('access_token');
+    }
+    return null;
+  }
+
+  getRefreshToken(): string | null {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('refresh_token');
     }
     return null;
   }
@@ -75,9 +134,22 @@ class AuthService {
     }
   }
 
+  /** 保存一次登录或换发返回的整组令牌。 */
+  setSession(session: { access_token: string; refresh_token?: string | null }): void {
+    if (typeof window === 'undefined') {
+      return;
+    }
+    localStorage.setItem('access_token', session.access_token);
+    if (session.refresh_token) {
+      localStorage.setItem('refresh_token', session.refresh_token);
+    }
+    window.dispatchEvent(new Event('auth-token-changed'));
+  }
+
   removeToken(): void {
     if (typeof window !== 'undefined') {
       localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
       window.dispatchEvent(new Event('auth-token-changed'));
     }
   }

@@ -121,7 +121,14 @@ class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     expires_in: int
+    # 访问令牌有效期收敛到小时级后，用续期凭条在后台换发新令牌，
+    # 使用者不会因此频繁被要求重新登录。
+    refresh_token: Optional[str] = None
     user: UserResponse
+
+class RefreshRequest(BaseModel):
+    """用续期凭条换取新的访问令牌"""
+    refresh_token: str = Field(..., min_length=1, description="登录时下发的续期凭条")
 
 # 令牌数据
 class TokenData(BaseModel):
