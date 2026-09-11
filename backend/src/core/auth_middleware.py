@@ -68,7 +68,8 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
             # 续期凭条在请求体里而不是 Authorization 头里，因此这里必须免鉴权，
             # 否则访问令牌一过期就永远换不出新的。凭条本身在处理函数内校验。
             AuthRule(r"^/api/auth/refresh", AuthLevel.NONE, ["POST"]),
-            AuthRule(r"^/api/auth/verify-token", AuthLevel.NONE, ["POST"]),
+            # 注：/api/auth/verify-token 实际是 GET，此处曾有一条 POST 的免鉴权规则，
+            # 从未生效。它的作用本就是校验令牌，落到默认的"需要认证"规则即可。
             
             # 公开的剧本搜索和浏览
             AuthRule(r"^/api/scripts/public/?$", AuthLevel.NONE, ["GET"]),
@@ -106,7 +107,9 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
             
             # TTS 服务公开接口
             AuthRule(r"^/api/tts/voices", AuthLevel.NONE, ["GET"]),
-            AuthRule(r"^/api/tts/synthesize", AuthLevel.NONE, ["POST"]),
+            # 此处曾免鉴权放行 /api/tts/synthesize，但该接口并不存在。语音合成是
+            # 付费接口，规则留着等于为将来加回它时预置了一个公网免费入口，故删除。
+            # 真要开放时，请连同费用上限和限流一起设计。
             
             # 默认规则：其他API路径需要认证
             AuthRule(r"^/api/.*", AuthLevel.REQUIRED),

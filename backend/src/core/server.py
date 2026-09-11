@@ -186,17 +186,36 @@ app.add_middleware(
 if os.path.isdir("static"):
     app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# 遗留的全 AI 模拟器与全知剧本管理接口。
+#
+# 它们属于早期的"全部角色都由 AI 演"的旧玩法，以及返回全知视角（含凶手身份、
+# 他人私本）的剧本编辑接口，当前单真人玩法一律走 /api/fusion。此前它们只是被
+# 中间件的 ADMIN 规则挡着，但十几个入口依然照常注册——每一个都是需要持续维护、
+# 也可能出问题的对外入口。
+#
+# 现在改为按开关决定是否注册：开发环境默认开启（旧管理页面仍可使用），
+# 生产环境默认关闭（这些工具不该对外部署）。需要时可显式覆盖。
+ENABLE_LEGACY_ADMIN = os.getenv(
+    "ENABLE_LEGACY_ADMIN",
+    "false" if is_production() else "true",
+).lower() == "true"
+
 # 注册剧本管理相关路由
-app.include_router(script_management_router)
-app.include_router(script_editor_router)
+if ENABLE_LEGACY_ADMIN:
+    app.include_router(script_management_router)
+    app.include_router(script_editor_router)
+    app.include_router(evidence_router)
+    app.include_router(character_router)
+    app.include_router(location_router)
+    # 遗留的全 AI 模拟器与全知对局历史
+    app.include_router(game_router)
+    app.include_router(game_history_router)
+    print("遗留管理接口已注册（ENABLE_LEGACY_ADMIN=true）")
+else:
+    print("遗留管理接口未注册（ENABLE_LEGACY_ADMIN=false）")
+
 if os.getenv("ENABLE_MEDIA_FEATURES", "false").lower() == "true":
     app.include_router(image_generation_router)
-app.include_router(evidence_router)
-app.include_router(character_router)
-app.include_router(location_router)
-# 注册游戏管理API路由
-app.include_router(game_router)
-app.include_router(game_history_router)
 # 注册文件管理API路由
 app.include_router(file_router)
 # 注册TTS API路由
