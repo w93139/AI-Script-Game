@@ -1,0 +1,20 @@
+"""AI代理模块"""
+from .ai_agent import AIAgent
+from .character_identity import CharacterIdentity
+from .character_memory import CharacterMemory
+from .phase_director import PhaseDirector
+from .character_agent import AgentResponse, CharacterAgent
+from .character_agent_manager import CharacterAgentManager
+from .gm_agent import GMAgent, PhaseStep
+
+__all__ = [
+    'AIAgent',
+    'CharacterIdentity',
+    'CharacterMemory',
+    'PhaseDirector',
+    'AgentResponse',
+    'CharacterAgent',
+    'CharacterAgentManager',
+    'GMAgent',
+    'PhaseStep',
+]

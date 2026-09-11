@@ -1,0 +1,148 @@
+import "@/styles/globals.css";
+import "@/styles/custom-scrollbar.css";
+import React from 'react';
+import type { AppProps } from "next/app";
+import Head from 'next/head';
+import { useRouter } from 'next/router';
+import { Toaster } from 'sonner';
+import { Loader2 } from 'lucide-react';
+import { useAuthStore } from '@/stores/authStore';
+import { useEffect, useState, useCallback } from 'react';
+import PageLoader from '@/components/PageLoader';
+
+// SSR安全的hooks
+const useSSRSafeState = (initialValue: any) => {
+  const [state, setState] = useState(initialValue);
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+  
+  return [isClient ? state : initialValue, setState, isClient];
+};
+
+// 错误边界组件
+class ErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.error('应用错误:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="min-h-screen bg-ink flex items-center justify-center">
+          <div className="text-center">
+            <h2 className="font-dossier text-2xl font-semibold text-paper mb-4">出现了一些问题</h2>
+            <p className="text-mist mb-6">页面遇到了错误，请刷新页面重试</p>
+            <button
+              onClick={() => window.location.reload()}
+              className="px-6 py-3 bg-brass/10 border border-brass/40 text-brass hover:bg-brass/20 rounded-sm transition-colors"
+            >
+              刷新页面
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    return this.props.children;
+  }
+}
+
+export default function App({ Component, pageProps }: AppProps) {
+  const router = useRouter();
+  const [routeLoading, setRouteLoading] = useState(false);
+  const [isInitialized, setIsInitialized, isClient] = useSSRSafeState(false);
+  const [authLoading, setAuthLoading] = useSSRSafeState(true);
+  
+  // 始终调用useAuthStore，但只在客户端使用其功能
+  const checkAuth = useAuthStore((state) => state.checkAuth);
+
+  const safeCheckAuth = useCallback(async () => {
+    if (isClient) {
+      return checkAuth();
+    }
+    return Promise.resolve();
+  }, [isClient, checkAuth]);
+
+  // 初始化认证状态
+  useEffect(() => {
+    if (!isClient) return;
+    
+    const initAuth = async () => {
+      try {
+        await safeCheckAuth();
+      } catch (error) {
+        console.error('认证初始化失败:', error);
+      } finally {
+        setIsInitialized(true);
+        setAuthLoading(false);
+      }
+    };
+
+    initAuth();
+  }, [isClient, safeCheckAuth, setIsInitialized, setAuthLoading]);
+
+  // 路由切换进度条
+  useEffect(() => {
+    const handleStart = () => setRouteLoading(true);
+    const handleComplete = () => setRouteLoading(false);
+
+    router.events.on('routeChangeStart', handleStart);
+    router.events.on('routeChangeComplete', handleComplete);
+    router.events.on('routeChangeError', handleComplete);
+
+    return () => {
+      router.events.off('routeChangeStart', handleStart);
+      router.events.off('routeChangeComplete', handleComplete);
+      router.events.off('routeChangeError', handleComplete);
+    };
+  }, [router]);
+
+  // 显示加载状态
+  if (!isClient || !isInitialized || authLoading) {
+    return (
+      <div className="min-h-screen bg-ink flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin text-brass mx-auto mb-4" />
+          <p className="text-mist">正在初始化应用...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <ErrorBoundary>
+      <Head>
+        <title>人生海海</title>
+        <meta name="application-name" content="人生海海" />
+      </Head>
+      <PageLoader visible={routeLoading} />
+      <Component {...pageProps} />
+      <Toaster
+        position="top-right"
+        theme="dark"
+        toastOptions={{
+          style: {
+            background: '#151A24',
+            color: '#E8E4DA',
+            border: '1px solid #C9A15F',
+          },
+        }}
+      />
+    </ErrorBoundary>
+  );
+}

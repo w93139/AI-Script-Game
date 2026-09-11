@@ -1,0 +1,239 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+  --card: #ffffff;
+  --card-foreground: #171717;
+  --popover: #ffffff;
+  --popover-foreground: #171717;
+  --primary: #171717;
+  --primary-foreground: #fafafa;
+  --secondary: #f5f5f5;
+  --secondary-foreground: #171717;
+  --muted: #f5f5f5;
+  --muted-foreground: #737373;
+  --accent: #f5f5f5;
+  --accent-foreground: #171717;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #e5e5e5;
+  --input: #e5e5e5;
+  --ring: #171717;
+  --radius: 0.5rem;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  /* 案卷工作台色板 */
+  --color-ink: #0E1116;
+  --color-panel: #151A24;
+  --color-raised: #1D2532;
+  --color-hairline: #1C2430;
+  --color-line: #262F3D;
+  --color-paper: #E8E4DA;
+  --color-mist: #9AA3AE;
+  --color-faint: #5C6673;
+  --color-brass: #C9A15F;
+  --color-brass-dim: #8A6B3C;
+  --color-thread: #B3473F;
+  --color-thread-dim: #7A2E28;
+
+  /* 案卷字体：卷宗正文（衬线）/ 数据编号（等宽） */
+  --font-sans: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-mono: var(--font-geist-mono);
+  --font-dossier: "Songti SC", "STSong", "SimSun", "Noto Serif SC", serif;
+  --font-data: ui-monospace, "SF Mono", "Cascadia Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+    --card: #173446;
+    --card-foreground: #ededed;
+    --popover: #0a0a0a;
+    --popover-foreground: #ededed;
+    --primary: #ededed;
+    --primary-foreground: #0a0a0a;
+    --secondary: #262626;
+    --secondary-foreground: #ededed;
+    --muted: #262626;
+    --muted-foreground: #a3a3a3;
+    --accent: #262626;
+    --accent-foreground: #ededed;
+    --destructive: #7f1d1d;
+    --destructive-foreground: #ededed;
+    --border: #262626;
+    --input: #262626;
+    --ring: #d4d4d8;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+}
+
+/* 可见键盘焦点：黄铜细框，不依赖浏览器默认 */
+:focus-visible {
+  outline: 2px solid var(--color-brass);
+  outline-offset: 2px;
+}
+
+/* 尊重减少动态偏好：取消装饰性过渡与动画 */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* 全局滚动条样式 */
+* {
+  /* Firefox */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(198, 161, 95, 0.35) rgba(28, 36, 48, 0.6);
+}
+
+/* WebKit 浏览器 (Chrome, Safari, Edge) */
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(28, 36, 48, 0.6);
+}
+
+*::-webkit-scrollbar-thumb {
+  background: rgba(198, 161, 95, 0.35);
+  border-radius: 4px;
+  border: 1px solid rgba(28, 36, 48, 0.5);
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: rgba(198, 161, 95, 0.55);
+}
+
+/* The game header and every in-page destination share the measured height. */
+.app-shell { --app-dock-offset: 0px; }
+.app-content { padding-left: var(--app-dock-offset); }
+.play-page {
+  --play-site-offset: 3.5rem;
+  --play-navigation-height: 8rem;
+}
+.play-topbar { top: var(--play-site-offset); }
+.play-feedback { top: calc(var(--play-site-offset) + var(--play-navigation-height) + 0.5rem); }
+.play-page :is(#play-reading, #play-discussion, #play-memories, #play-finale, #play-phase-actions, [id^="play-message-"]) {
+  scroll-margin-top: calc(var(--play-site-offset) + var(--play-navigation-height) + 1rem);
+}
+.play-nav-action,
+.play-topbar-primary > .contents > button,
+.play-topbar-tools > button {
+  display: flex;
+  min-width: 0;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0.25rem;
+  font-size: 0.875rem;
+  line-height: 1.25rem;
+  text-align: center;
+  box-shadow: none;
+}
+.play-nav-action:not([aria-disabled="true"]),
+.play-topbar-primary > .contents > button { color: var(--color-brass); }
+.play-topbar a:hover,
+.play-topbar nav button:hover:not(:disabled) { background: var(--color-raised); }
+.play-topbar [aria-disabled="true"] { font-size: 0.75rem; }
+.play-page aside[aria-label="底部发言面板"] {
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100dvh - var(--play-site-offset) - var(--play-navigation-height) - 1rem);
+  left: var(--app-dock-offset, 0px);
+  transition: left 300ms ease;
+}
+.play-page aside[aria-label="底部发言面板"] > div:first-child { flex-shrink: 0; }
+.play-page #play-composer { min-height: 0; }
+@media (min-width: 768px) {
+  .app-shell { --app-dock-offset: var(--app-desktop-dock-width, 0px); }
+  .play-page { --play-site-offset: 0px; }
+}
+
+/* Opening action stays calm while reading; feedback only follows interaction. */
+.opening-start {
+  transition: transform 160ms ease, box-shadow 160ms ease, filter 160ms ease;
+}
+.opening-start-arrow { transition: transform 160ms ease; }
+.opening-start:hover,
+.opening-start:focus-visible {
+  box-shadow: 0 4px 14px rgb(198 161 95 / 20%);
+  filter: brightness(1.06);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .opening-start:hover { transform: translateY(-1px); }
+  .opening-start:hover .opening-start-arrow { transform: translateX(2px); }
+  .opening-start:active { transform: translateY(0) scale(0.98); }
+}
+
+/* Compact two-row game navigation; tools open outside the sticky header. */
+.play-topbar { overflow: visible; }
+.play-header-row { flex-wrap: nowrap; }
+.play-header-title { flex: 1 1 0; }
+.play-top-actions { max-width: 100%; }
+.play-topbar-primary > .play-nav-action,
+.play-topbar-primary > .contents > button,
+.play-topbar-primary > .play-more-tools { flex: 1 1 0; }
+.play-more-tools > summary { width: 100%; list-style: none; }
+.play-more-tools > summary::-webkit-details-marker { display: none; }
+.play-more-tools > summary::after { content: '⌄'; margin-left: 0.35rem; }
+.play-more-content { max-height: min(65dvh, calc(100dvh - var(--play-site-offset) - var(--play-navigation-height) - 1rem)); }
+
+/* One narrow rail replaces the app Dock; popout and rail share a hover region. */
+.play-round-rail { display: none; width: 56px; }
+.play-round-peek { left: 55px; width: min(320px, calc(100vw - 56px)); }
+.play-round-tab[aria-expanded="true"] { color: var(--color-paper); background: var(--color-raised); border-color: var(--color-brass-dim); }
+@media (min-width: 1024px) {
+  .app-shell[data-game-workspace="true"]:has([aria-label="每轮线索与记录"]) { --play-workspace-width: 56px; }
+  .app-shell[data-game-workspace="true"]:has([data-round-rail][data-pinned="true"]) { --play-workspace-width: 376px; }
+  .play-round-rail { display: block; }
+  .play-topbar [data-round-mobile-trigger] { display: none; }
+}
+.app-shell[data-game-workspace="true"] .app-content,
+.app-shell[data-game-workspace="true"] .play-page aside[aria-label="底部发言面板"] { transition: none; }
+@media (max-width: 639px) {
+  .play-header-title h2 { font-size: 1.125rem; line-height: 1.5rem; }
+  .play-header-title p { font-size: 0.6875rem; line-height: 1rem; }
+  .play-top-actions { gap: 0.25rem; }
+  .play-top-actions > button { gap: 0.25rem; padding-inline: 0.5rem; font-size: 0.75rem; white-space: nowrap; }
+  .play-top-actions > button > svg { width: 1rem; height: 1rem; }
+  .play-topbar-primary .play-nav-action,
+  .play-topbar-primary > .contents > button { padding-inline: 0; font-size: 0.75rem; letter-spacing: -0.02em; white-space: nowrap; }
+  .play-topbar-primary [data-round-mobile-trigger] > svg { display: none; }
+  .play-topbar-primary .play-previous-round > svg { display: none; }
+}

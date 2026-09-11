@@ -1,0 +1,109 @@
+import React from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { Menu, X, Bell, Settings } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import UserMenu from '@/components/UserMenu';
+import { cn } from '@/lib/utils';
+
+interface TopBarProps {
+  sidebarOpen?: boolean;
+  setSidebarOpen?: (open: boolean) => void;
+  showSidebarToggle?: boolean;
+  isGamePage?: boolean;
+  className?: string;
+}
+
+const TopBar: React.FC<TopBarProps> = ({
+  sidebarOpen = false,
+  setSidebarOpen,
+  showSidebarToggle = true,
+  isGamePage = false,
+  className
+}) => {
+  const router = useRouter();
+
+  return (
+    <div className={cn(
+      "fixed top-0 left-0 right-0 z-50 bg-ink/95 backdrop-blur-sm border-b border-line",
+      className
+    )}>
+      <div className="flex justify-between items-center h-14 px-4">
+        {/* 左侧区域 */}
+        <div className="flex items-center space-x-4">
+          {/* 侧边栏切换按钮 - 游戏页面隐藏 */}
+          {showSidebarToggle && setSidebarOpen && !isGamePage && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="text-mist hover:bg-raised/60 hover:text-paper md:hidden"
+            >
+              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          )}
+          
+          {/* Logo - 游戏页面隐藏 */}
+          {!isGamePage && (
+            <Link href="/" className="font-dossier text-lg font-bold text-brass hover:text-paper transition-colors">
+              人生海海
+            </Link>
+          )}
+          
+          {/* 游戏页面返回按钮 */}
+          {isGamePage && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => router.push('/')}
+              className="text-mist hover:bg-raised/60 hover:text-paper"
+            >
+              ← 返回首页
+            </Button>
+          )}
+        </div>
+
+        {/* 右侧区域 - 游戏页面只显示用户菜单 */}
+        {!isGamePage ? (
+          <div className="flex items-center space-x-2">
+            {/* 桌面端功能按钮 */}
+            <div className="hidden md:flex items-center space-x-2">
+              {/* 通知按钮 */}
+              <Button
+                variant="ghost"
+                size="sm"
+                className="text-mist hover:bg-raised/60 hover:text-paper p-2"
+                title="通知"
+              >
+                <Bell className="h-4 w-4" />
+              </Button>
+              
+              {/* 设置按钮 */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => router.push('/profile')}
+                className="text-mist hover:bg-raised/60 hover:text-paper p-2"
+                title="设置"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
+            </div>
+            
+            {/* 用户菜单 */}
+            <div className="flex items-center">
+              <UserMenu variant="compact" />
+            </div>
+          </div>
+        ) : (
+          // 游戏页面只显示简化的用户菜单
+          <div className="flex items-center">
+            <UserMenu variant="compact" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default TopBar;

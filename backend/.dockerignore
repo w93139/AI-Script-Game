@@ -1,0 +1,13 @@
+.venv/
+__pycache__/
+.pytest_cache/
+.data/
+tests/
+docs/
+scripts/*
+!scripts/seed_featured_scripts.py
+ai_agent.log
+*.pyc
+.github/
+Dockerfile
+.dockerignore
