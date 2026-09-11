@@ -23,6 +23,11 @@ class PackageFullPlayRules(PackageMemoryRules):
         self._call = None
         self._call_number = 0
         self._private_messages = []
+        # 本阶段里每个角色已经打给过谁。用来阻止"老是给同一个人打电话"：
+        # 此前谁给谁打完全由 AI 自行决定，也没有任何地方记得刚打过，
+        # 于是同一对人会被反复接通。现在由规则引擎记账，打过的人在打满一轮
+        # 之前既不出现在可选名单里，也不接受显式指定。
+        self._called_this_phase: dict[tuple[str, str], set[str]] = {}
         self._finale = None
         finale = self._package['full_play']['finale']
         options = [*finale['votes']['identities'], *(o for q in finale['questions'] for o in q['options'])]
@@ -60,6 +65,26 @@ class PackageFullPlayRules(PackageMemoryRules):
                 {t['id'] for t in self._package['truth']}, set(self._memory_grants),
                 {actor: {(m['collection'], m['id']) for m in self.proposal_context(actor)['materials']}
                  for actor in self._characters}, self._heard_terms)
+
+    def _call_ledger_key(self, actor):
+        return (self._phases[self._phase_index]['id'], actor)
+
+    def _callable_peers(self, actor) -> set[str]:
+        """本阶段该角色现在还可以打给谁。
+
+        打满一轮（除自己外每人都打过一次）后清零重新开放，因此这条规则只阻止
+        扎堆重复，不会让通话功能停摆。
+        """
+        others = {c['id'] for c in self._package['characters'] if c['id'] != actor}
+        called = self._called_this_phase.get(self._call_ledger_key(actor), set())
+        return (others - called) or others
+
+    def _record_call(self, actor, peer):
+        key = self._call_ledger_key(actor)
+        called = self._called_this_phase.setdefault(key, set())
+        called.add(peer)
+        if called >= {c['id'] for c in self._package['characters'] if c['id'] != actor}:
+            self._called_this_phase[key] = set()
 
     def require_discussion(self):
         if self._settled or self._phase_kind() == 'FINALE':
@@ -136,6 +161,10 @@ class PackageFullPlayRules(PackageMemoryRules):
             self._character(peer)
             if peer == actor:
                 raise PlayRulesError('FULL_PLAY_CALL_PEER_INVALID')
+            # 不依赖 AI 记得刚打过谁：本轮已经打过的对象直接拒绝。
+            if peer not in self._callable_peers(actor):
+                raise PlayRulesError('FULL_PLAY_CALL_PEER_REPEATED')
+            self._record_call(actor, peer)
             self._call_number += 1
             self._call = {'id': f'call-{self._call_number}', 'character_ids': [actor, peer]}
             return
@@ -208,8 +237,9 @@ class PackageFullPlayRules(PackageMemoryRules):
         if self._call is None:
             actor = [c['id'] for c in peers if c['id'] != self._human][idle_turn % 4]
             context = self.proposal_context(actor)
+            available = self._callable_peers(actor)
             return {k:context[k] for k in ('character','current_phase')} | dict(stage='IDLE',
-                peers=[c for c in peers if c['id']!=actor], planning_materials=context['materials'],
+                peers=[c for c in peers if c['id'] in available], planning_materials=context['materials'],
                 materials=[], reply_to=None, private_claims=self.personal_discussion(actor))
         messages = [m for m in self._private_messages if m['call_id']==self._call['id']]
         if not messages:

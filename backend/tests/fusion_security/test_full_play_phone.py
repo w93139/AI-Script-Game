@@ -206,3 +206,84 @@ def test_full_play_phone_last_result_slot_survives_pause(status):
     instance._append(row,{},state,'ACTION',pause(1998),{})
     instance._append(row,{},state,'AI_RESULT',{'idempotency_key':'step','request_id':'step'},{'status':status,'decision':None})
     assert state.revision==2000 and not state.pending and not state.engine.view()['full_game']['phone_busy']
+
+
+# ---------------------------------------------------------------------------
+# 重复通话由规则引擎拦截（迭代方案第 06 条）
+# ---------------------------------------------------------------------------
+
+def _open_investigation():
+    from src.fusion.package_play_engine import play_engine
+    engine = play_engine(full_package(), 'a')
+    engine.apply('ADVANCE_PHASE')
+    return engine
+
+
+def test_calling_the_same_peer_twice_in_a_phase_is_refused():
+    """同一阶段里重复打给同一个人会被直接拒绝。
+
+    此前谁给谁打完全由 AI 决定，也没有任何地方记得刚打过，于是同一对人会被
+    反复接通，玩家看到的就是"这两个人一直在打电话"。现在由规则引擎记账，
+    不依赖 AI 的记性。
+    """
+    engine = _open_investigation()
+    engine.table_apply('START_CALL', 'b', {'peer_character_id': 'c'}, 1)
+    engine.table_apply('STOP_CALL', 'b', None, 2)
+
+    with pytest.raises(Exception, match='CALL_PEER_REPEATED'):
+        engine.table_apply('START_CALL', 'b', {'peer_character_id': 'c'}, 3)
+
+
+def test_a_refused_repeat_leaves_no_call_behind():
+    """被拒绝的重复通话不能留下半开的通话状态。"""
+    engine = _open_investigation()
+    engine.table_apply('START_CALL', 'b', {'peer_character_id': 'c'}, 1)
+    engine.table_apply('STOP_CALL', 'b', None, 2)
+
+    with pytest.raises(Exception, match='CALL_PEER_REPEATED'):
+        engine.table_apply('START_CALL', 'b', {'peer_character_id': 'c'}, 3)
+
+    # 仍可正常打给别人，说明状态没有被这次拒绝破坏。
+    engine.table_apply('START_CALL', 'b', {'peer_character_id': 'a'}, 4)
+
+
+def test_the_idle_peer_list_stops_offering_someone_already_called():
+    """可选名单里不再出现刚打过的人——AI 根本选不到重复项。
+
+    只靠拒绝还不够：候选名单仍然把重复选项摆在 AI 面前，它就会不断撞墙。
+    这里确认名单本身已经收窄。
+    """
+    engine = _open_investigation()
+    idle = engine.phone_context(0)
+    actor = idle['character']['id']
+    first = idle['peers'][0]['id']
+
+    engine.table_apply('START_CALL', actor, {'peer_character_id': first}, 1)
+    engine.table_apply('STOP_CALL', actor, None, 2)
+
+    offered = {peer['id'] for peer in engine.phone_context(0)['peers']}
+    assert first not in offered, '刚打过的人不该再出现在可选名单里'
+    assert offered, '仍应留有其他可打的对象'
+
+
+def test_a_full_round_reopens_everyone():
+    """打满一轮后重新开放，通话功能不会因为这条规则而停摆。"""
+    engine = _open_investigation()
+    actor = engine.phone_context(0)['character']['id']
+    others = [c['id'] for c in full_package()['characters'] if c['id'] != actor]
+
+    for index, peer in enumerate(others):
+        engine.table_apply('START_CALL', actor, {'peer_character_id': peer}, index * 2 + 1)
+        engine.table_apply('STOP_CALL', actor, None, index * 2 + 2)
+
+    reopened = {peer['id'] for peer in engine.phone_context(0)['peers']}
+    assert reopened == set(others), '一轮打满后应当重新开放全部对象'
+
+
+def test_each_character_keeps_its_own_call_history():
+    """记账按角色分开：b 打过 c，不影响 d 打给 c。"""
+    engine = _open_investigation()
+    engine.table_apply('START_CALL', 'b', {'peer_character_id': 'c'}, 1)
+    engine.table_apply('STOP_CALL', 'b', None, 2)
+
+    engine.table_apply('START_CALL', 'd', {'peer_character_id': 'c'}, 3)

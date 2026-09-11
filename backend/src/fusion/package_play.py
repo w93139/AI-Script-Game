@@ -1181,12 +1181,16 @@ class PackagePlayService(FinaleMotivationMixin):
             ready = not state.pending and not projection['settled']
             investigating = ready and full['phase_kind'] == 'INVESTIGATION' and not full['phone_busy']
             already = {(e['collection'], e['material_id'], e['owner']) for e in state.scripted_retells}
+            outstanding = catalogue.pending(state.engine, already)
             result['guided_play'] = {'schema_version': GUIDED_POLICY, 'available': ready,
                 'can_investigate_round': bool(investigating and projection['mechanics']['available_actions']
                     and projection['current_phase']['id'] not in state.engine._closed_investigations),
                 'can_investigate': bool(investigating and projection['mechanics']['available_actions']
                     and projection['current_phase']['id'] not in state.engine._closed_investigations),
-                'can_finish_investigation': bool(investigating), 'has_legacy_ballot': full['ballot'] is not None,
+                # 还有必讲内容没讲完时不能结束本阶段；前端据此说明原因而不是直接禁用。
+                'can_finish_investigation': bool(investigating and not outstanding),
+                'required_speech_pending': len(outstanding),
+                'has_legacy_ballot': full['ballot'] is not None,
                 'can_present_required': bool(ready and len(state.discussion) < self._statement_limit(state)
                     and catalogue.pending(state.engine, already)),
                 'last_command': ({'idempotency_key': state.guided_actions[-1]['request_id'],
@@ -1196,7 +1200,8 @@ class PackagePlayService(FinaleMotivationMixin):
                 result['table_decisions']['options'] = [c for c in result['table_decisions']['options'] if c['action'] == 'SEAL_FINALE']
         if catalogue is None and (state.guided_actions or state.scripted_retells or state.host_hint_entries):
             result['guided_play'] = {'schema_version': GUIDED_POLICY, 'available': False,
-                'can_investigate': False, 'can_finish_investigation': False, 'has_legacy_ballot': False,
+                'can_investigate': False, 'can_finish_investigation': False,
+                'required_speech_pending': 0, 'has_legacy_ballot': False,
                 'can_present_required': False,
                 'last_command': ({'idempotency_key': state.guided_actions[-1]['request_id'],
                     'action': state.guided_actions[-1]['action'], 'sequence': state.guided_actions[-1]['sequence']}
@@ -1310,6 +1315,20 @@ class PackagePlayService(FinaleMotivationMixin):
     def _guided_catalog(self, binding):
         return resolve_role_content(self.guided_content, binding['package_hash'], binding['selected_character_id'])
 
+    def _outstanding_required(self, binding, state):
+        """本阶段还欠哪些"必须讲出来"的内容。
+
+        规则引擎负责判定阶段、搜证和证据可见性，但"该说的话有没有说"此前没有
+        任何一方在管：AI 可能漏讲，程序代述也可能因为讨论条数用尽而中断，
+        而推进阶段并不检查这件事。于是必讲内容会被静默跳过，表现为玩家看到的
+        "AI 角色该说的话没说"。这里把它变成可查询的欠账清单。
+        """
+        catalogue = self._guided_catalog(binding)
+        if catalogue is None or not isinstance(state.engine, PackageFullPlayRules):
+            return []
+        already = {(e['collection'], e['material_id'], e['owner']) for e in state.scripted_retells}
+        return catalogue.pending(state.engine, already)
+
     def _present_required(self, row, binding, state):
         catalogue = self._guided_catalog(binding)
         if catalogue is None or state.pending or not isinstance(state.engine, PackageFullPlayRules):
@@ -1364,6 +1383,10 @@ class PackagePlayService(FinaleMotivationMixin):
                 if request['action'] != 'REQUEST_HINT':
                     self._present_required(row, binding, state)
                 if request['action'] == 'FINISH_INVESTIGATION':
+                    # 必讲内容没结清就不推进。此前这里直接推进，漏讲的内容会随着
+                    # 阶段切换永远失去机会，玩家只会感到"这个角色什么都没说"。
+                    if self._outstanding_required(binding, state):
+                        raise PlayRulesError('PACKAGE_PLAY_REQUIRED_SPEECH_PENDING')
                     advance = {'action': 'ADVANCE_PHASE', 'expected_revision': state.revision,
                         'idempotency_key': content_hash({'guided_finish': request['idempotency_key'], 'play': identifier})}
                     self._append(row, binding, state, 'ACTION', advance, {})

@@ -438,3 +438,78 @@ def test_post_game_answer_catalogue_rejects_unknown_source(source_field):
     target[source_field] = [{'source_id': 'unreviewed', 'anchor': 'L1'}]
     with pytest.raises(ValueError, match='GUIDED_CONTENT_INVALID'):
         GuidedFlowContent(package, document)
+
+
+# ---------------------------------------------------------------------------
+# 必讲内容的推进门禁（迭代方案第 06 条）
+# ---------------------------------------------------------------------------
+
+def test_finishing_an_investigation_flushes_required_speech_first(play):
+    """正常情况下结束搜证会先把欠着的必讲内容讲完，再推进阶段。
+
+    这是既有行为，作为下面两条的对照：门禁不应该妨碍本来就正常的流程。
+    """
+    _, view = setup(play, True)
+    view = enter(play, view)
+
+    assert view['guided_play']['required_speech_pending'] == 0
+    assert view['guided_play']['can_finish_investigation']
+
+    before = view['current_phase']['id']
+    view = run(play, view, 'FINISH_INVESTIGATION')
+    assert view['current_phase']['id'] != before, '欠账已结清，应当正常推进'
+
+
+def test_pending_required_speech_blocks_finishing_the_investigation(play, monkeypatch):
+    """必讲内容还没讲完时，不许结束搜证阶段。
+
+    此前这里会直接推进，漏讲的内容随阶段切换永远失去机会，玩家只会感到
+    "这个角色什么都没说"。讨论条数用尽是真实会发生的中断原因，
+    这里用它构造出"讲不完"的局面。
+    """
+    _, view = setup(play, True)
+    monkeypatch.setattr(play.play, '_statement_limit', lambda state: 0)
+    view = enter(play, view)
+
+    assert view['discussion']['entries'] == [], '条数用尽，必讲内容一句也没能讲出来'
+    assert view['guided_play']['required_speech_pending'] > 0
+    assert not view['guided_play']['can_finish_investigation']
+
+    before = view['current_phase']['id']
+    with pytest.raises(PackagePlayError, match='REQUIRED_SPEECH_PENDING'):
+        run(play, view, 'FINISH_INVESTIGATION')
+
+    fresh = play.play.get(view['play_id'], 1)
+    assert fresh['current_phase']['id'] == before, '被拒绝后不应留下半推进的状态'
+
+
+def test_the_gate_reports_how_much_is_still_owed(play, monkeypatch):
+    """视图要说明还欠几条，前端才能解释"为什么不能继续"，而不是只把按钮禁掉。"""
+    _, view = setup(play, True)
+    monkeypatch.setattr(play.play, '_statement_limit', lambda state: 0)
+    view = enter(play, view)
+
+    owed = view['guided_play']['required_speech_pending']
+    # 此刻只欠一条：另一条必讲内容挂在回忆上，而回忆要先有人发言才会被触发，
+    # 讨论条数为 0 时连触发的机会都没有——这正是"必讲内容会被静默跳过"的样子。
+    assert owed == 1
+
+    # 条数恢复后把欠账结清，门禁随即放行。
+    monkeypatch.setattr(play.play, '_statement_limit', lambda state: 600)
+    view = run(play, view, 'PRESENT_REQUIRED')
+    while view['guided_play']['required_speech_pending']:
+        view = run(play, view, 'PRESENT_REQUIRED', key=f"flush-{view['revision']}")
+    assert view['guided_play']['can_finish_investigation']
+    view = run(play, view, 'FINISH_INVESTIGATION')
+    assert view['guided_play']['required_speech_pending'] == 0
+
+
+def test_plays_without_a_required_speech_catalogue_are_unaffected(play):
+    """没有必讲清单的旧对局照常推进，门禁不引入新的阻塞。"""
+    _, view = setup(play)
+    view = enter(play, view)
+
+    assert view['guided_play']['required_speech_pending'] == 0
+    before = view['current_phase']['id']
+    view = run(play, view, 'FINISH_INVESTIGATION')
+    assert view['current_phase']['id'] != before
