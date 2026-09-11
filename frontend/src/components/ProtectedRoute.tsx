@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import { useAuthStore } from '@/stores/authStore';
 import { Loader2 } from 'lucide-react';
 import { authReturnPath } from '@/lib/authReturnPath';
+import { ensureGuestSession } from '@/lib/guestAccess';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -16,7 +17,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   redirectTo = '/auth/login'
 }) => {
   const router = useRouter();
-  const { isAuthenticated, isLoading } = useAuthStore();
+  const { isAuthenticated, isLoading, anonymousLogin } = useAuthStore();
   const [isChecking, setIsChecking] = useState(true);
 
   useEffect(() => {
@@ -26,13 +27,19 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
         return;
       }
 
-      setIsChecking(false);
-
-      // 如果需要认证但用户未登录，重定向到登录页
+      // 如果需要认证但用户未登录，先尝试访客模式（后端开启时开发期无需登录），
+      // 访客模式不可用才重定向到登录页。探测期间保持加载态，避免闪一下登录页。
       if (requireAuth && !isAuthenticated) {
+        const signedIn = await ensureGuestSession(anonymousLogin);
+        if (signedIn) {
+          return;
+        }
+        setIsChecking(false);
         router.replace({ pathname: redirectTo, query: { returnUrl: authReturnPath(router.asPath) } });
         return;
       }
+
+      setIsChecking(false);
 
       // 登录后回到原入口，缺省进入剧本中心。
       if (!requireAuth && isAuthenticated && 
@@ -43,7 +50,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     };
 
     checkAuth();
-  }, [isAuthenticated, isLoading, requireAuth, router, redirectTo]);
+  }, [isAuthenticated, isLoading, requireAuth, router, redirectTo, anonymousLogin]);
 
   // 显示加载状态
   if (isLoading || isChecking) {

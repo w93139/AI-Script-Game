@@ -4,6 +4,7 @@ import { persist } from 'zustand/middleware';
 import { PhoneLogin, UserLogin, UserRegister } from '@/types/auth';
 import { UserResponse as User, UserUpdate, PasswordChange } from '@/client';
 import { authService } from '@/services/authService';
+import { clearGuestAccessProbe } from '@/lib/guestAccess';
 
 interface AuthState {
   // 状态
@@ -129,6 +130,8 @@ export const useAuthStore = create<AuthState>()(
         } catch (error) {
           console.error('Logout error:', error);
         } finally {
+          // 上次探测的结论可能已经过时（后端开关随时可能变），登出后重新探测。
+          clearGuestAccessProbe();
           set({
             user: null,
             isAuthenticated: false,
