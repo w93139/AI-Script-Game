@@ -20,7 +20,7 @@ export interface PlayClueCollectionProps {
   onRestoreFocus?: () => void;
   renderVisual: (visual: ClueVisual) => ReactNode;
 }
-const buttonClass = 'min-h-11 rounded-lg border border-brass/40 px-3 py-2 text-sm text-brass hover:bg-raised disabled:opacity-40';
+const buttonClass = 'min-h-11 rounded-md border border-line px-3 py-2 text-sm text-mist hover:bg-raised disabled:opacity-40';
 
 export default function PlayClueCollection(props: PlayClueCollectionProps) {
   const key = props.locked ? null : clueCollectionKey(props.ownerId, props.playId, props.characterId);
@@ -104,14 +104,14 @@ function ClueSession({ storageKey, available, selection, onSelectionHandled, onR
       }} className="fixed bottom-4 left-3 right-3 z-[70] flex max-h-[85dvh] min-w-0 flex-col rounded-xl border border-line bg-panel p-4 text-paper shadow-xl sm:bottom-6 sm:left-auto sm:right-6 sm:w-[min(640px,calc(100vw-48px))]" aria-describedby="play-clues-description">
         <div className="flex items-center justify-between gap-3"><Dialog.Title className="text-lg font-semibold">我收藏的线索</Dialog.Title><Dialog.Close asChild><button type="button" className={buttonClass} aria-label="关闭线索收藏">关闭</button></Dialog.Close></div>
         <Dialog.Description id="play-clues-description" className="mt-2 text-xs leading-5 text-mist">点选一条查看完整内容。收藏仅保存在本机，不会公开或发给 AI。</Dialog.Description>
-        {visible.length > 0 && <label className="mt-3 text-xs text-mist">搜索收藏<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="输入人物、地点或关键词" className="mt-1 min-h-11 w-full rounded-lg border border-line bg-ink px-3 text-sm text-paper" /></label>}
+        {visible.length > 0 && <label className="mt-3 text-xs text-mist">搜索收藏<input type="search" value={query} onChange={event => setQuery(event.target.value)} placeholder="输入人物、地点或关键词" className="mt-1 min-h-11 w-full rounded-md border border-line bg-ink px-3 text-sm text-paper" /></label>}
         <div className="mt-3 min-h-0 overflow-y-auto overscroll-contain">
           {editable && visible.length === 0 && <p className="py-6 text-sm leading-7 text-mist">还没有收藏线索。在阅读材料或调查线索旁点击「收藏线索」，即可在这里随时查看。</p>}
           {visible.length > 0 && matches.length === 0 && <p role="status" className="py-4 text-sm text-mist">没有匹配的收藏，试试其他关键词。</p>}
-          <div aria-label="收藏索引" className="grid max-h-36 grid-cols-2 gap-2 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-3">{matches.map(({ saved, item }) => <button key={clueId(saved)} type="button" aria-label={`查看收藏：${item?.title || '当前不可读取的收藏'}`} aria-pressed={selected && clueId(selected.saved) === clueId(saved)} aria-controls="play-collected-detail" onClick={() => setSelectedId(clueId(saved))} className={`min-h-16 min-w-0 rounded-lg border p-2 text-left hover:bg-raised ${selected && clueId(selected.saved) === clueId(saved) ? 'border-brass bg-brass/10' : 'border-line'}`}>
-            <span className="block truncate text-xs font-medium text-brass">{item?.title || '当前不可读取的收藏'}</span><span className="mt-1 line-clamp-2 break-words text-xs leading-5 text-mist">{item ? Array.from(playerMaterialText(item.text).replace(/[#*\n]/g, ' ').trim()).slice(0, 48).join('') : '暂时无法查看'}</span>
+          <div aria-label="收藏索引" className="grid max-h-36 grid-cols-2 gap-2 overflow-y-auto overscroll-contain pr-1 sm:grid-cols-3">{matches.map(({ saved, item }) => <button key={clueId(saved)} type="button" aria-label={`查看收藏：${item?.title || '当前不可读取的收藏'}`} aria-pressed={selected && clueId(selected.saved) === clueId(saved)} aria-controls="play-collected-detail" onClick={() => setSelectedId(clueId(saved))} className={`min-h-16 min-w-0 rounded-md border p-2 text-left hover:bg-raised ${selected && clueId(selected.saved) === clueId(saved) ? 'border-line bg-white/10' : 'border-line'}`}>
+            <span className="block truncate text-xs font-medium text-mist">{item?.title || '当前不可读取的收藏'}</span><span className="mt-1 line-clamp-2 break-words text-xs leading-5 text-mist">{item ? Array.from(playerMaterialText(item.text).replace(/[#*\n]/g, ' ').trim()).slice(0, 48).join('') : '暂时无法查看'}</span>
           </button>)}</div>
-          {selected && <article id="play-collected-detail" aria-label="选中收藏详情" key={clueId(selected.saved)} className="mt-3 min-w-0 rounded-lg border border-line p-3">
+          {selected && <article id="play-collected-detail" aria-label="选中收藏详情" key={clueId(selected.saved)} className="mt-3 min-w-0 rounded-md border border-line p-3">
             <div className="flex items-start justify-between gap-3"><h3 className="min-w-0 break-words font-medium">{selectedItem?.title || '当前不可读取的收藏'}</h3><button type="button" disabled={!editable} className={`${buttonClass} shrink-0`} aria-label={`取消收藏：${selectedItem?.title || '当前不可读取的收藏'}`} onClick={() => { setNotice(''); persist({ version: 1, entries: current.current.entries.filter(value => clueId(value) !== clueId(selected.saved)) }); }}>取消收藏</button></div>
             {selectedItem ? <><div className="mt-3"><PlayText text={selectedItem.text} /></div>{open && selectedItem.visuals.map(visual => renderVisual(visual))}</> : <p className="mt-2 text-sm text-mist">资料已变化或不在当前可见范围内。刷新确认资料后再查看；本机副本不会代替读取权限。</p>}
           </article>}

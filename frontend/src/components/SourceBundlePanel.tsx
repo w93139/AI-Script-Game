@@ -42,7 +42,7 @@ export default function SourceBundlePanel(props: SourceBundlePanelProps) {
   const selected = bundle?.sources.find(source => source.id === preview?.sourceId);
   return <main className="mx-auto max-w-6xl px-4 pb-16 pt-20 text-paper">
     <p className="text-xs tracking-widest text-brass">管理员 · 剧本准备</p>
-    <h1 className="mt-2 text-3xl font-bold">来源材料核验</h1>
+    <h1 className="mt-2 text-3xl font-semibold">来源材料核验</h1>
     <p className="mt-3 text-sm leading-6 text-mist">核对这一版使用了哪些材料，查看原图与修订文字，再检查文件是否保持一致。这里的材料包含主持信息，仅管理员可见。</p>
     {props.error && <div role="alert" className="mt-5 rounded border border-red-400/50 bg-red-950/40 p-4 text-red-200">{props.error}</div>}
     <div className="mt-6 flex flex-wrap items-end gap-3">

@@ -19,7 +19,7 @@ export default function PlayPerformanceSummary({ group, renderVisuals }: {
       {group.items.map(item => <li key={item.id} className="py-3 first:pt-0 last:pb-0 [&>div]:leading-7 [&_p]:mb-1" data-performance-item>
         <PlayText text={item.text} />
         {renderVisuals(item)}
-        {item.retelling && <p className="mt-1 text-xs leading-5 text-brass">{item.retelling === 'MUST_RETELL' ? '需讲述' : '可选择讲述'}</p>}
+        {item.retelling && <p className="mt-1 text-xs leading-5 text-mist">{item.retelling === 'MUST_RETELL' ? '需讲述' : '可选择讲述'}</p>}
       </li>)}
     </ol>
     {group.items.some(item => item.retelling) && <p className="mt-4 text-xs leading-6 text-mist">原本不能出示，讲述时请使用自己的话。</p>}

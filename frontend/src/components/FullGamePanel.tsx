@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { questionClarification, questionRefusal } from '@/lib/playQuestionGuide';
 import type { PackagePlay, FullTableAction, FullDecisionAction, FullSubmission } from '@/types/packagePlay';
 
-const button = 'rounded border border-brass px-3 py-2 text-sm text-brass disabled:opacity-50';
+const button = 'rounded border border-line px-3 py-2 text-sm text-mist disabled:opacity-50';
 const field = 'w-full rounded border border-line bg-ink p-3 text-paper';
 const box = 'min-w-0 space-y-4 rounded border border-line bg-panel p-5';
 const statusText = { PENDING: '等待结果', OK: '已提交', INVALID: '未通过检查，尚未提交', UNKNOWN: '结果未知，尚未提交', STALE: '信息已变化，尚未提交', EXPIRED: '请求已过期，尚未提交' };
@@ -190,20 +190,20 @@ export default function FullGamePanel({ view, locked, onTable, onDecide, onPriva
       <h2 className="text-lg font-semibold">单独对话</h2><p className="text-sm text-mist">{view.single_player ? '选择一位角色，围绕当前议题交流。这里的对话仅双方可见。' : '用文字与一名角色交流，内容仅双方可见。发送后，对方会回复一次。'}</p>
       {!full.call && !full.phone_busy && <div className="space-y-3"><div className="block">通话对象<PlaySelect presentation="choices" label="通话对象" value={peer} disabled={locked || Boolean(full.ballot)} onChange={setPeer} options={view.characters.filter(c => c.id !== view.selected_character_id).map(c => ({ value: c.id, label: c.name }))} /></div>
           {!view.settled && <button type="button" className={button} disabled={disabled || !peer || Boolean(full.ballot) || full.phase_kind !== 'INVESTIGATION' || Boolean(view.single_player && (!view.single_player.available || !view.single_player.topics.some(topic => topic.responders.some(responder => responder.character_id === peer && responder.channels.includes('PRIVATE')))))} onClick={() => send({ action: 'START_CALL', payload: { peer_character_id: peer } })}>开始对话</button>}</div>}
-      {historyPeer && <p className="text-sm font-medium text-brass">与{name(historyPeer)}的私聊记录</p>}
-      <div ref={messages} role="log" aria-label={historyPeer ? `${name(historyPeer)}的私聊记录` : '私聊记录'} className="max-h-[28dvh] min-h-24 space-y-4 overflow-y-auto overscroll-contain rounded-xl border border-line bg-[#111820] p-4">
+      {historyPeer && <p className="text-sm font-medium text-mist">与{name(historyPeer)}的私聊记录</p>}
+      <div ref={messages} role="log" aria-label={historyPeer ? `${name(historyPeer)}的私聊记录` : '私聊记录'} className="max-h-[28dvh] min-h-24 space-y-4 overflow-y-auto overscroll-contain rounded-xl border border-line bg-[#161718] p-4">
         {visibleMessages.length === 0 && <p className="py-8 text-center text-sm text-mist">{view.settled ? '与该角色暂无对话记录。' : '选择一位角色，开始你们的对话。'}</p>}
         {visibleMessages.map(m => { const mine = m.speaker === view.selected_character_id; return <div key={m.id} className={`flex items-start gap-2 ${mine ? 'flex-row-reverse' : ''}`}>
-          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#293747] text-sm text-paper">{name(m.speaker).slice(0, 1)}</span>
+          <span aria-hidden="true" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-[#23252a] text-sm text-paper">{name(m.speaker).slice(0, 1)}</span>
           <div className={`min-w-0 max-w-[82%] ${mine ? 'text-right' : ''}`}><p className="mb-1 text-xs text-mist">{name(m.speaker)}{mine ? ' · 我' : ''}</p>
-            <div className={`rounded-xl px-3 py-2 text-left ${mine ? 'bg-[#394333]' : 'bg-[#24303c]'}`}>{!mine && renderSpeech ? renderSpeech(m) : <PlayText text={m.text} />}</div>
+            <div className={`rounded-xl px-3 py-2 text-left ${mine ? 'bg-[#161718]' : 'bg-[#0f1011]'}`}>{!mine && renderSpeech ? renderSpeech(m) : <PlayText text={m.text} />}</div>
           </div>
         </div>; })}
       </div>
       {full.call ? <><p>正在与{full.call.character_ids.filter(id => id !== view.selected_character_id).map(name).join('、')}单独对话</p>
         {!view.single_player && <><label className="block">说给对方听<textarea className={field} value={privateText} maxLength={2000} disabled={disabled} onChange={e => setPrivateText(e.target.value)} /></label>
-        {privateClarification && <p role="status" className="text-sm text-brass">{privateClarification}</p>}
-        <p className={`text-xs ${privateLength > 1000 ? 'text-brass' : 'text-mist'}`}>{privateLength} / 1000 字符。请围绕本剧本交流。</p>
+        {privateClarification && <p role="status" className="text-sm text-mist">{privateClarification}</p>}
+        <p className={`text-xs ${privateLength > 1000 ? 'text-mist' : 'text-mist'}`}>{privateLength} / 1000 字符。请围绕本剧本交流。</p>
         <button type="button" className={button} disabled={!canSendPrivate} onClick={async () => { if (!canSendPrivate) return; const sent = privateText; const saved = await send({ action: 'PRIVATE_SPEAK', payload: { text: sent.trim() } }); if (saved === true) setPrivateText(current => current === sent ? '' : current); }}>发送私聊</button>{' '}</>}
         {view.single_player && <PlayTopicExchange view={view} channel="PRIVATE" peer={historyPeer} locked={locked} recoveryLocked={recoveryLocked} pendingReplyKey={pendingTopicReplyKey} onTopic={onTopic} onReply={onTopicReply} />}
         <button type="button" className={button} disabled={disabled} onClick={() => send({ action: 'STOP_CALL' })}>结束对话</button></>
@@ -226,7 +226,7 @@ export default function FullGamePanel({ view, locked, onTable, onDecide, onPriva
     {(section === 'all' || section === 'finale') && view.finale_speeches && <section aria-label="封卷前看法" className={box}>
       <h2 className="text-lg font-semibold">封卷前看法</h2>
       <p className="text-sm leading-7 text-mist">这是各角色在封卷前的怀疑，实际投票将在所有人封卷后公示。</p>
-      {!view.finale_motivation?.complete && <p role="status" className="text-sm text-brass">正在听取其他角色的看法（{view.finale_motivation?.completed_count || 0}/4）…</p>}
+      {!view.finale_motivation?.complete && <p role="status" className="text-sm text-mist">正在听取其他角色的看法（{view.finale_motivation?.completed_count || 0}/4）…</p>}
       <ul className="space-y-3">{view.finale_speeches.map(entry => <li key={entry.character_id} className="break-words text-sm leading-7">
         <span className="font-semibold">{name(entry.character_id)}：</span>{entry.text || (view.finale_motivation?.complete ? '未发表看法。' : '等待看法。')}
       </li>)}</ul>
@@ -240,13 +240,13 @@ export default function FullGamePanel({ view, locked, onTable, onDecide, onPriva
           <legend className="whitespace-pre-wrap break-all">{q.prompt}{q.max_choices ? `（最多选 ${q.max_choices} 项）` : ''}</legend>
           {!q.options.length && <p className="text-sm text-mist">本局尚未获得可选的具体依据，仍需明确选择不确定。</p>}
           <div className="grid grid-flow-row grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4" aria-label="答案选项">
-          {q.options.map(o => <label key={o.id} className="flex min-h-11 min-w-0 cursor-pointer items-start gap-2 rounded-lg border border-line px-3 py-2 text-sm leading-6 has-checked:border-brass has-checked:bg-brass/10"><input type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={answers[q.id]?.includes(o.id) || false}
+          {q.options.map(o => <label key={o.id} className="flex min-h-11 min-w-0 cursor-pointer items-start gap-2 rounded-md border border-line px-3 py-2 text-sm leading-6 has-checked:border-mist has-checked:bg-white/10"><input type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={answers[q.id]?.includes(o.id) || false}
             disabled={disabled || (!answers[q.id]?.includes(o.id) && (answers[q.id]?.length || 0) >= q.max_choices)}
             onChange={e => setAnswers(current => { const next = { ...current };
               const selected = e.target.checked ? [...(current[q.id] || []), o.id] : (current[q.id] || []).filter(id => id !== o.id);
               if (selected.length) next[q.id] = selected; else delete next[q.id]; return next;
             })} />{o.label}</label>)}
-          <label className="flex min-h-11 min-w-0 cursor-pointer items-start gap-2 rounded-lg border border-line px-3 py-2 text-sm leading-6 has-checked:border-brass has-checked:bg-brass/10"><input type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={Object.hasOwn(answers, q.id) && answers[q.id].length === 0}
+          <label className="flex min-h-11 min-w-0 cursor-pointer items-start gap-2 rounded-md border border-line px-3 py-2 text-sm leading-6 has-checked:border-mist has-checked:bg-white/10"><input type="checkbox" className="mt-1 h-4 w-4 shrink-0" checked={Object.hasOwn(answers, q.id) && answers[q.id].length === 0}
             onChange={e => setAnswers(current => { const next = { ...current }; if (e.target.checked) next[q.id] = []; else delete next[q.id]; return next; })} />我暂时无法判断</label>
           </div>
         </fieldset>)}
@@ -257,7 +257,7 @@ export default function FullGamePanel({ view, locked, onTable, onDecide, onPriva
       <div aria-label="终局投票操作" className="flex flex-wrap items-center gap-3">
         {finale.sealed ? <p role="status" className="text-sm">你的答卷、指认和信任已封存。</p> : <button type="button" className={button} disabled={disabled || !canSeal} onClick={seal}>确认并封存我的答卷和两票</button>}
         {onFinaleVotes && !finale.all_sealed && <button type="button" className={button} disabled={locked || view.pending_ai || !view.table_decisions?.available || !view.table_decisions.options.some(o => o.action === 'SEAL_FINALE')} onClick={() => { if (!locked && !view.pending_ai && view.table_decisions?.available) onFinaleVotes(Boolean(finaleVotesNeedsConfirmation)); }}>{finaleVotesNeedsConfirmation ? '确认，重新请求未提交角色' : '请其他角色一起提交'}</button>}
-        {finaleVotesNeedsConfirmation && <p className="text-sm leading-6 text-brass">原请求已停止等待。确认后会为每个尚未提交的角色发起一次新互动，已封存的答卷保留。</p>}
+        {finaleVotesNeedsConfirmation && <p className="text-sm leading-6 text-mist">原请求已停止等待。确认后会为每个尚未提交的角色发起一次新互动，已封存的答卷保留。</p>}
         {finaleVotesProgress && <p role="status" className="text-sm text-mist">{finaleVotesProgress}</p>}
       </div>
     </section>}

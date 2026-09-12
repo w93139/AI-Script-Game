@@ -35,7 +35,7 @@ export default function PlayTopicExchange({ view, channel, peer, questionText, l
   const disabled = locked || Boolean(pendingReplyKey) || !onTopic || !action || !canTopic(view, action);
   const turns = single.turns.filter(turn => turn.channel === channel && (channel === 'PRIVATE' ? turn.character_id === peer : turn.phase_id === view.current_phase.id));
   const name = (id: string) => view.characters.find(character => character.id === id)?.name || '其他角色';
-  const button = 'min-h-11 rounded-lg border border-brass/40 px-4 py-2 text-sm text-brass hover:bg-raised disabled:opacity-40';
+  const button = 'min-h-11 rounded-md border border-line px-4 py-2 text-sm text-mist hover:bg-raised disabled:opacity-40';
   const choices = (label: string, value: string, options: { value: string; label: string }[], onChange: (value: string) => void, kind: 'topic' | 'character' | 'question') => (
     <fieldset disabled={locked || Boolean(pendingReplyKey)} className="min-w-0" aria-label={label}>
       <legend className="mb-2 text-sm text-mist">{label}</legend>
@@ -44,8 +44,8 @@ export default function PlayTopicExchange({ view, channel, peer, questionText, l
           <input type="radio" name={`${scope}:${label}`} value={option.value} checked={value === option.value}
             disabled={locked || Boolean(pendingReplyKey)} onChange={() => { if (!locked && !pendingReplyKey) onChange(option.value); }}
             className="peer sr-only" />
-          <span className={`flex min-h-11 items-center gap-2 border border-line px-3 py-2 text-sm text-paper transition-colors hover:border-brass/60 peer-checked:border-brass peer-checked:bg-brass/15 peer-checked:text-brass peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brass peer-disabled:cursor-not-allowed peer-disabled:opacity-40 ${kind === 'topic' ? 'rounded-full' : 'rounded-lg'}`}>
-            {kind === 'character' && <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brass/10"><UserRound aria-hidden="true" className="h-4 w-4 text-brass" /></span>}
+          <span className={`flex min-h-11 items-center gap-2 border border-line px-3 py-2 text-sm text-paper transition-colors hover:border-line peer-checked:border-mist peer-checked:bg-white/15 peer-checked:text-mist peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-mist peer-disabled:cursor-not-allowed peer-disabled:opacity-40 ${kind === 'topic' ? 'rounded-full' : 'rounded-md'}`}>
+            {kind === 'character' && <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/10"><UserRound aria-hidden="true" className="h-4 w-4 text-mist" /></span>}
             <span className="min-w-0 break-words [overflow-wrap:anywhere]">{option.label}</span>
             <span aria-hidden="true" className={`ml-auto shrink-0 ${value === option.value ? 'visible' : 'invisible'}`}>✓</span>
           </span>
@@ -53,13 +53,13 @@ export default function PlayTopicExchange({ view, channel, peer, questionText, l
       </div>
     </fieldset>
   );
-  return <section aria-label={channel === 'PUBLIC' ? '本轮议题交流' : '私聊议题'} className="min-w-0 space-y-4 rounded-lg border border-line bg-panel p-4">
+  return <section aria-label={channel === 'PUBLIC' ? '本轮议题交流' : '私聊议题'} className="min-w-0 space-y-4 rounded-md border border-line bg-panel p-4">
     <h2 className="font-semibold">{channel === 'PUBLIC' ? '本轮议题交流' : '私聊议题'}</h2>
     <p className="text-sm leading-6 text-mist">可以用自己的话描述疑问，再确认具体问法；也可以直接点选本轮议题。</p>
     {channel === 'PRIVATE' && !view.settled && <label className="block text-sm text-mist">你想问什么<textarea rows={2} maxLength={1000} value={query} disabled={locked || !view.full_game?.call}
       onChange={event => setDraft({ scope, text: event.target.value })} className="mt-2 w-full rounded border border-line bg-ink p-3 text-paper" /></label>}
-    {query.trim() && single.available && <div aria-label="问题匹配建议" className="space-y-2 rounded border border-brass/40 p-3">
-      <p role="status" className="text-sm leading-6 text-brass">{clarification || (suggestions.length ? '这些问题可能与你的疑问有关。请选择问法和角色，确认后再发送。' : '暂时不能确定你想问哪件事。请补充人物、地点或线索，或直接选择下方议题。')}</p>
+    {query.trim() && single.available && <div aria-label="问题匹配建议" className="space-y-2 rounded border border-line p-3">
+      <p role="status" className="text-sm leading-6 text-mist">{clarification || (suggestions.length ? '这些问题可能与你的疑问有关。请选择问法和角色，确认后再发送。' : '暂时不能确定你想问哪件事。请补充人物、地点或线索，或直接选择下方议题。')}</p>
       {!clarification && suggestions.map(candidate => <button key={`${candidate.topic_id}:${candidate.character_id}:${candidate.intent_id}`} type="button" className={`${button} block w-full text-left`} disabled={locked || Boolean(pendingReplyKey)}
         onClick={() => { if (!locked && !pendingReplyKey) setSelection({ scope: selectionScope, topic: candidate.topic_id, character: candidate.character_id, intent: candidate.intent_id }); }}>
         <span className="block font-medium">询问{name(candidate.character_id)} · {candidate.title}</span><span className="mt-1 block text-paper">{candidate.question}</span>
@@ -79,7 +79,7 @@ export default function PlayTopicExchange({ view, channel, peer, questionText, l
         {intent && <div aria-label="将要发送的问题" className="rounded border border-line p-3 text-sm"><PlayText text={intent.question} /></div>}
         <button type="button" className={button} disabled={disabled} onClick={() => { if (!disabled && action) onTopic?.(action); }}>发送所选问题</button>
       </div>}
-    {turns.length > 0 && <details key={`${scope}:${turns.at(-1)?.id}:${turns.at(-1)?.status}`} open><summary className="min-h-11 cursor-pointer py-2 text-sm text-brass">已保存的议题 · {turns.length}</summary><ol aria-label="已保存的议题" className="space-y-3">{[...turns].reverse().map(turn => {
+    {turns.length > 0 && <details key={`${scope}:${turns.at(-1)?.id}:${turns.at(-1)?.status}`} open><summary className="min-h-11 cursor-pointer py-2 text-sm text-mist">已保存的议题 · {turns.length}</summary><ol aria-label="已保存的议题" className="space-y-3">{[...turns].reverse().map(turn => {
       const checking = pendingReplyKey === turn.reply_request?.idempotency_key || turn.status === 'PENDING';
       const canReply = Boolean(onReply && turn.reply_request && (checking || (single.available && turn.status === 'READY' && !turn.can_fallback)));
       const fallback: TopicAction = { action: 'USE_FALLBACK', payload: { turn_id: turn.id } };
@@ -89,8 +89,8 @@ export default function PlayTopicExchange({ view, channel, peer, questionText, l
       return <li key={turn.id} className="space-y-2 rounded border border-line p-3 text-sm">
         <p className="font-medium">{turn.title} · {name(turn.character_id)}</p><PlayText text={turn.question} />
         <p className="text-xs text-mist">{turn.status === 'FAILED' && ['UNKNOWN', 'EXPIRED'].includes(turn.receipt_status || '') ? '原请求未取得可用结果，已停止等待。可查看固定答复继续，本操作不会重新调用 AI。' : ({ READY: turn.can_fallback ? '问题已保存，当前可查看该议题固定答复。' : '问题已保存，等待角色回答。', PENDING: '角色回答正在处理，可核对原请求。', OK: '角色说法已保存，请结合线索判断。', FAILED: '这次回答未完成，可查看该议题固定答复。', FALLBACK: '已采用该议题固定答复。' })[turn.status]}</p>
-        {publicReply && <div aria-label="角色答复" className="rounded-lg bg-raised p-3"><p className="mb-2 text-xs text-brass">{name(turn.character_id)} · 角色说法</p>{renderSpeech ? renderSpeech(publicReply) : <PlayText text={publicReply.text} />}</div>}
-        {channel === 'PUBLIC' && turn.status === 'FALLBACK' && turn.answer && <div aria-label="固定答复" className="rounded-lg bg-raised p-3"><p className="mb-2 text-xs text-brass">{name(turn.character_id)} · 固定答复，仍是角色说法</p>{renderSpeech && fixedReply ? renderSpeech(fixedReply) : <PlayText text={turn.answer} />}</div>}
+        {publicReply && <div aria-label="角色答复" className="rounded-md bg-raised p-3"><p className="mb-2 text-xs text-mist">{name(turn.character_id)} · 角色说法</p>{renderSpeech ? renderSpeech(publicReply) : <PlayText text={publicReply.text} />}</div>}
+        {channel === 'PUBLIC' && turn.status === 'FALLBACK' && turn.answer && <div aria-label="固定答复" className="rounded-md bg-raised p-3"><p className="mb-2 text-xs text-mist">{name(turn.character_id)} · 固定答复，仍是角色说法</p>{renderSpeech && fixedReply ? renderSpeech(fixedReply) : <PlayText text={turn.answer} />}</div>}
         {canReply && <button type="button" className={button} disabled={checking ? recoveryLocked : locked || Boolean(pendingReplyKey)}
           onClick={() => { if (!(checking ? recoveryLocked : locked || Boolean(pendingReplyKey))) onReply?.(turn.id); }}>{checking ? '检查这次议题回答' : '请角色回答'}</button>}
         {turn.can_fallback && <button type="button" className={button} disabled={locked || Boolean(pendingReplyKey) || !onTopic || !canTopic(view, fallback)}

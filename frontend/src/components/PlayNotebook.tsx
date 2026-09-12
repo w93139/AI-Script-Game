@@ -22,9 +22,9 @@ export interface PlayNotebookProps {
   onClipHandled?: () => void;
 }
 
-const entryClass = 'rounded-full border border-brass/60 bg-panel px-4 py-3 text-sm font-medium text-paper shadow-lg hover:bg-raised focus-visible:outline-2 focus-visible:outline-brass disabled:cursor-not-allowed disabled:opacity-50';
+const entryClass = 'rounded-full border border-line bg-panel px-4 py-3 text-sm font-medium text-paper shadow-lg hover:bg-raised focus-visible:outline-2 focus-visible:outline-mist disabled:cursor-not-allowed disabled:opacity-50';
 const entryPosition = (lifted?: boolean, inlineTrigger?: boolean) => inlineTrigger ? '' : `fixed right-4 z-40 ${lifted ? 'bottom-[calc(42vh+6rem)]' : 'bottom-28'}`;
-const buttonClass = 'rounded-md border border-line px-3 py-2 text-sm text-paper hover:bg-raised focus-visible:outline-2 focus-visible:outline-brass disabled:opacity-50';
+const buttonClass = 'rounded-md border border-line px-3 py-2 text-sm text-paper hover:bg-raised focus-visible:outline-2 focus-visible:outline-mist disabled:opacity-50';
 
 export default function PlayNotebook(props: PlayNotebookProps) {
   const key = props.locked ? null : notebookKey(props.ownerId, props.playId, props.characterId);
@@ -136,14 +136,14 @@ function NotebookSession({ storageKey, playId, characterId, lifted, inlineTrigge
         <Dialog.Description id="play-notebook-description" className="mt-2 text-xs leading-5 text-mist">本机保存 · 不会发给 AI · 不同浏览器不同步。清除浏览器数据会丢失笔记，重要内容请导出。</Dialog.Description>
         <Tabs.Root value={tab} onValueChange={setTab} className="mt-3 flex min-h-0 flex-1 flex-col">
           <Tabs.List aria-label="笔记本内容" className="flex gap-1 border-b border-line pb-2">
-            {([['notes', '笔记'], ['clips', '收藏'], ['memories', '回忆']] as const).map(([value, label]) => <Tabs.Trigger key={value} value={value} className="rounded-md px-4 py-2 text-sm text-mist data-[state=active]:bg-raised data-[state=active]:text-paper focus-visible:outline-2 focus-visible:outline-brass">{label}</Tabs.Trigger>)}
+            {([['notes', '笔记'], ['clips', '收藏'], ['memories', '回忆']] as const).map(([value, label]) => <Tabs.Trigger key={value} value={value} className="rounded-md px-4 py-2 text-sm text-mist data-[state=active]:bg-raised data-[state=active]:text-paper focus-visible:outline-2 focus-visible:outline-mist">{label}</Tabs.Trigger>)}
           </Tabs.List>
           <Tabs.Content value="notes" className="min-h-0 overflow-y-auto pt-3">
             <label htmlFor="play-notebook-note" className="text-sm text-mist">疑点、人物关系和待核对的说法</label>
             <textarea id="play-notebook-note" value={snapshot.document.note} maxLength={NOTEBOOK_NOTE_LIMIT} disabled={!editable}
               onChange={event => { setNotice(''); persist({ ...draft.current, note: event.target.value }); }}
               placeholder="记下你的判断，也可以从材料或公开台词中收藏重点。"
-              className="mt-2 min-h-52 w-full resize-y rounded-md border border-line bg-ink p-3 text-base leading-7 text-paper outline-none focus:border-brass disabled:opacity-50" />
+              className="mt-2 min-h-52 w-full resize-y rounded-md border border-line bg-ink p-3 text-base leading-7 text-paper outline-none focus:border-line disabled:opacity-50" />
             <p className="mt-1 text-right text-xs text-mist">{snapshot.document.note.length} / {NOTEBOOK_NOTE_LIMIT}</p>
           </Tabs.Content>
           <Tabs.Content value="clips" className="min-h-0 overflow-y-auto pt-3">

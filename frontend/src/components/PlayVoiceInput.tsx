@@ -10,7 +10,7 @@ type Session = { id: number; scope: string; controller: AbortController; provide
 // A document has one microphone owner, even with several speech inputs mounted.
 let microphoneOwner: Session | undefined;
 let nextSessionId = 0;
-const buttonStyle = 'min-h-11 rounded-lg border border-brass/60 px-3 py-2 text-sm text-paper disabled:opacity-40';
+const buttonStyle = 'min-h-11 rounded-lg border border-line px-3 py-2 text-sm text-paper disabled:opacity-40';
 
 export type PlayVoiceInputProps = {
   ownerId?: string | null; playId: string; phaseId: string; revision: number;
@@ -174,10 +174,10 @@ export default function PlayVoiceInput(props: PlayVoiceInputProps) {
   const providerName = visible?.providerName;
   return <section aria-label={`${providerName ?? ''}语音输入`} className="space-y-2">
     {!visible ? <button ref={opener} type="button" disabled={!enabled} className={buttonStyle} onClick={() => void open()}>语音输入</button>
-      : <div className="space-y-3 rounded-lg border border-brass/40 bg-ink p-3">
+      : <div className="space-y-3 rounded-lg border border-line bg-ink p-3">
         <div className="flex items-center justify-between gap-3"><p className="text-sm font-semibold">{providerName}{visible.realtime ? '实时转写' : '语音输入'}</p><button type="button" className="min-h-11 px-2 text-sm text-mist underline" onClick={close}>{visible.stage === 'REVIEW' || visible.stage === 'ERROR' ? '关闭' : '取消'}</button></div>
         <p className="text-xs leading-6 text-mist">最长 60 秒。录音将交给{providerName ?? '语音识别服务'}转成文字；校对后填入草稿，由你确认发送。</p>
-        {visible.message && <p role={visible.stage === 'ERROR' ? 'alert' : 'status'} className="text-sm leading-6 text-brass">{visible.message}</p>}
+        {visible.message && <p role={visible.stage === 'ERROR' ? 'alert' : 'status'} className="text-sm leading-6 text-mist">{visible.message}</p>}
         {visible.stage === 'READY' && <button type="button" className={buttonStyle} onClick={() => void record()}>开始录音</button>}
         {visible.stage === 'RECORDING' && <div className="flex flex-wrap items-center gap-3"><span role="timer" className="text-sm text-paper">录音 {Math.floor(visible.seconds)} / 60 秒</span><button type="button" className={buttonStyle} onClick={() => { const session = run.current; if (session?.id === visible.sessionId) void finish(session); }}>{visible.realtime ? '停止录音' : '停止并转写'}</button></div>}
         {visible.realtime && ['RECORDING', 'TRANSCRIBING'].includes(visible.stage) && <div className="rounded-lg border border-line bg-panel p-3" aria-label="实时识别文字" aria-live="off">
@@ -187,7 +187,7 @@ export default function PlayVoiceInput(props: PlayVoiceInputProps) {
         {visible.stage === 'WAITING' && <button type="button" className={buttonStyle} onClick={() => void check()}>检查本次转写结果</button>}
         {visible.stage === 'REVIEW' && <>
           <label className="block text-sm">识别文字（可修改）<textarea ref={previewInput} value={visible.text} rows={3} maxLength={12000} className="mt-2 w-full rounded border border-line bg-panel p-3 text-paper" onChange={event => { const session = run.current; if (session?.id === visible.sessionId && current(session)) setState(value => value?.sessionId === session.id ? { ...value, text: event.target.value } : value); }} /></label>
-          <p className={`text-xs leading-6 ${tooLong ? 'text-brass' : 'text-mist'}`}>填入后 {Array.from(merged.trim()).length} / 1000 字符。{tooLong ? '请缩短识别文字或原草稿后再填入。' : '已有文字会保留，识别文字追加到末尾。'}</p>
+          <p className={`text-xs leading-6 ${tooLong ? 'text-mist' : 'text-mist'}`}>填入后 {Array.from(merged.trim()).length} / 1000 字符。{tooLong ? '请缩短识别文字或原草稿后再填入。' : '已有文字会保留，识别文字追加到末尾。'}</p>
           <button type="button" disabled={!candidate || tooLong} className={buttonStyle} onClick={() => {
             const session = run.current;
             if (!session || session.id !== visible.sessionId || !current(session) || !candidate) return;

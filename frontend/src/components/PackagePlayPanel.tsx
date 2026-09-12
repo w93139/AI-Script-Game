@@ -93,7 +93,7 @@ export function PlayImage({ playId, visualId, label }: { playId: string; visualI
     return () => observer.disconnect();
   }, [open, url, authInvalid, error]);
   return <div ref={container} className="mt-3 min-w-0" aria-label={label}>
-    {!url && <button type="button" disabled={loading || authInvalid} onClick={() => { void open(); }} className="min-h-11 rounded border border-brass px-3 py-2 text-sm text-brass disabled:opacity-50">{loading ? '正在读取原图…' : `查看${label}`}</button>}
+    {!url && <button type="button" disabled={loading || authInvalid} onClick={() => { void open(); }} className="min-h-11 rounded border border-line px-3 py-2 text-sm text-mist disabled:opacity-50">{loading ? '正在读取原图…' : `查看${label}`}</button>}
     {url && <PlayImageView url={url} label={label} rotation={rotation} onRotate={() => setRotation(value => (value + 90) % 360)} zoom={zoom} onZoom={() => setZoom(value => value === 1 ? 2 : 1)} />}
     {error && <p role="alert" className="mt-2 text-sm text-mist">{error}</p>}
   </div>;
@@ -458,17 +458,17 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
         {view?.visuals?.filter(v => v.collection === collection && v.material_id === item.id).map(v =>
           <PlayImage key={`${clipScope}:${v.id}`} playId={view.play_id} visualId={v.id} label={v.label} />)}
         <p className="mt-3 break-all text-xs leading-6 text-mist">{item.kind ? `${kindLabels[item.kind]} · ` : ''}{isPublic ? '已公开' : disclosureLabels[item.disclosure]}{sharedBy ? ` · 由${sharedBy}公开` : ''}</p>
-        {!isPublic && item.retelling && <p className="mt-2 text-xs leading-6 text-brass">原本不能出示；{item.retelling === 'MUST_RETELL' ? '请按角色要求，用自己的话讲清经过。' : '可以用自己的话选择讲述相关经历。'}</p>}
-        {!isPublic && item.disclosure === 'MUST_SHARE' && <p className="mt-2 text-xs leading-6 text-brass">请按剧本要求分享。需要你点击公开，页面不会自动替你分享。</p>}
-        <div className="mt-3 flex flex-wrap gap-3 text-sm text-brass">
-          {props.ownerId && <button type="button" disabled={readingActionsLocked} className="min-h-11 rounded-lg border border-brass/40 px-3 py-2 hover:bg-raised disabled:opacity-40" onClick={() => {
+        {!isPublic && item.retelling && <p className="mt-2 text-xs leading-6 text-mist">原本不能出示；{item.retelling === 'MUST_RETELL' ? '请按角色要求，用自己的话讲清经过。' : '可以用自己的话选择讲述相关经历。'}</p>}
+        {!isPublic && item.disclosure === 'MUST_SHARE' && <p className="mt-2 text-xs leading-6 text-mist">请按剧本要求分享。需要你点击公开，页面不会自动替你分享。</p>}
+        <div className="mt-3 flex flex-wrap gap-3 text-sm text-mist">
+          {props.ownerId && <button type="button" disabled={readingActionsLocked} className="min-h-11 rounded-md border border-line px-3 py-2 hover:bg-raised disabled:opacity-40" onClick={() => {
             if (!readingActionsLocked) setClueSelection({ scope: clipScope, id: `${collection}:${item.id}` });
           }}>收藏线索</button>}
         </div>
         {readingActionsLocked && <p role="status" className="mt-2 text-xs text-mist">资料正在更新或需要刷新，完成后可收藏线索。</p>}
         {canShare && <button type="button" aria-label={`公开${collection === 'knowledge' ? '资料' : '线索'} ${item.id}`} disabled={locked}
           onClick={() => { if (!locked && view && canPerformPlayAction(view, action)) props.onAction(action); }}
-          className="mt-3 rounded border border-brass px-3 py-2 text-sm text-brass disabled:opacity-50">{collection === 'knowledge' ? '公开这份资料' : '公开这条线索'}</button>}
+          className="mt-3 rounded border border-line px-3 py-2 text-sm text-mist disabled:opacity-50">{collection === 'knowledge' ? '公开这份资料' : '公开这条线索'}</button>}
       </div>;
     });
     return <section aria-label={title} className="min-w-0 rounded border border-line bg-panel p-5">
@@ -488,9 +488,9 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
       pageRoot.current?.style.setProperty('--play-navigation-height', `${Math.ceil(event.currentTarget.getBoundingClientRect().height)}px`);
     }}>
       <div className="play-header-row flex min-w-0 items-center justify-between gap-2">
-        <Link href="/" className="play-home-link hidden min-h-11 shrink-0 items-center gap-2 rounded-lg border border-brass/50 bg-raised px-3 py-2 text-sm text-brass md:inline-flex"><Home aria-hidden="true" className="h-4 w-4" />返回首页</Link>
+        <Link href="/" className="play-home-link hidden min-h-11 shrink-0 items-center gap-2 rounded-md border border-line bg-raised px-3 py-2 text-sm text-mist md:inline-flex"><Home aria-hidden="true" className="h-4 w-4" />返回首页</Link>
         <div className="play-header-title min-w-0">
-          <h2 className="truncate font-dossier text-base font-semibold sm:text-lg">{view.script.title}<span className="ml-2 font-sans text-xs font-normal text-brass">{actor?.name || '固定角色'}</span></h2>
+          <h2 className="truncate font-dossier text-base font-semibold sm:text-lg">{view.script.title}<span className="ml-2 font-sans text-xs font-normal text-mist">{actor?.name || '固定角色'}</span></h2>
           <p aria-label="当前阶段" className="mt-1 truncate text-xs leading-5 text-mist">{view.round_workspace?.phases.find(phase => phase.phase_id === view.current_phase.id)?.title || (view.full_game ? (currentPage === 'finale' ? '结局 · 答卷' : currentPage === 'investigation' ? '调查阶段' : '阅读材料') : view.current_phase.title)}</p>
         </div>
         <div className="play-top-actions flex shrink-0 items-center justify-end gap-2">{guided && <PlayHostHints key={`host-hints:${pageScope}`} view={view} locked={Boolean(locked)} error={props.error} onGuided={props.onGuided} />}
@@ -509,7 +509,7 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
           if (event.key === 'Escape' && event.currentTarget.contains(event.target as Node)) { event.preventDefault(); closeOverview(); event.currentTarget.querySelector('summary')?.focus({ preventScroll: true }); }
         }}>
           <summary className="play-nav-action cursor-pointer">更多</summary>
-          <div className="play-more-content absolute left-0 right-0 top-full z-40 mt-1 max-h-[65dvh] overflow-y-auto overscroll-contain rounded-xl border border-brass/40 bg-panel p-3 shadow-xl sm:left-auto sm:w-[360px]">
+          <div className="play-more-content absolute left-0 right-0 top-full z-40 mt-1 max-h-[65dvh] overflow-y-auto overscroll-contain rounded-xl border border-line bg-panel p-3 shadow-xl sm:left-auto sm:w-[360px]">
             <nav aria-label="更多游戏工具" className="play-topbar-tools grid grid-cols-2 gap-2">
               {guided && currentPage !== 'reading' && <a className="play-nav-action" href="#play-reading" onClick={event => navigate(event, 'reading')}>阅读材料</a>}
               {guided && (view.full_game?.phase_kind === 'INVESTIGATION' || Boolean(view.full_game?.private_discussion.length)) && <button type="button" className="play-nav-action" aria-current={page === 'private' ? 'page' : undefined} onClick={() => goToPage('private')}>单独对话</button>}
@@ -519,22 +519,22 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
               {view.discussion && <button type="button" className="play-nav-action" onClick={openComposer}>{view.settled ? '查看回应' : singlePlayer ? '议题 / 发言' : '发言 / 提问'}</button>}
               {guided && page !== 'reading' && <button type="button" className="play-nav-action" onClick={() => goToPage(navigation.history.at(-1) || 'reading', true)}>返回{navigation.history.length ? '上一页' : '阅读资料'}</button>}
             </nav>
-            <details className="mt-3 border-t border-line pt-2"><summary className="min-h-11 cursor-pointer py-2 text-sm text-brass">故事背景</summary>
+            <details className="mt-3 border-t border-line pt-2"><summary className="min-h-11 cursor-pointer py-2 text-sm text-mist">故事背景</summary>
               <PlayText text={view.introduction.text} /><p className="mt-3 text-xs leading-6 text-mist">翻页只切换查看内容。已获得的线索、发言和调查消耗都会保存；文中的时间为故事时间。</p>
               <p className="mt-2 text-xs text-mist">已保存记录：{view.revision} 条</p>
             </details>
     <div className="mt-3 flex flex-wrap items-center gap-3 border-t border-line pt-3">
       <button type="button" disabled={props.loading || props.busy || (!props.playId && !props.openingSessionId)} onClick={() => { if (!props.loading && !props.busy) props.onReload(); }}
         className="rounded border border-line px-3 py-2 text-sm disabled:opacity-50">刷新进度</button>
-      <Link href={(view?.opening_session_id || props.openingSessionId) ? `/play/package-preview?session=${encodeURIComponent(view?.opening_session_id || props.openingSessionId)}` : '/play/package-preview'} className="text-sm text-brass underline">返回开场阅读</Link>
+      <Link href={(view?.opening_session_id || props.openingSessionId) ? `/play/package-preview?session=${encodeURIComponent(view?.opening_session_id || props.openingSessionId)}` : '/play/package-preview'} className="text-sm text-mist underline">返回开场阅读</Link>
     </div>
-            <button type="button" className="mt-3 min-h-11 w-full rounded border border-line px-3 py-2 text-sm text-brass" onClick={() => { closeOverview(); overview.current?.querySelector('summary')?.focus({ preventScroll: true }); }}>收起工具</button>
+            <button type="button" className="mt-3 min-h-11 w-full rounded border border-line px-3 py-2 text-sm text-mist" onClick={() => { closeOverview(); overview.current?.querySelector('summary')?.focus({ preventScroll: true }); }}>收起工具</button>
           </div>
         </details>
       </nav>
     </header>}
     <div className={view ? 'sr-only' : ''}>
-    <p className="text-xs text-brass">独自入局 · 与角色共同推理</p>
+    <p className="text-xs text-mist">独自入局 · 与角色共同推理</p>
     <h1 className="mt-2 font-dossier text-3xl">进入游戏</h1>
     <p className="mt-4 text-sm leading-7 text-mist">{!view
       ? '从已选角色的开场开始，按阶段阅读并与其他角色交流。开始后会显示这个版本可用的调查、对话与结局玩法。'
@@ -544,23 +544,23 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
       ? '你可以以角色身份发言、追问其他角色，并阅读自己的私密回忆。AI 的回答是角色说法，需要结合线索判断。当前为文字试玩，尚无自动胜负判定或语音。'
       : '你可以手动推进阶段、分享允许公开的材料，并向其他角色提问。此版本 AI 按问题挑选可公开资料，以原文回答；尚未接入自然对白、自动胜负或语音，仍是文字规则试玩。'}</p>
     </div>
-    {props.error && (!composerOpen || !view?.discussion) && <div role="alert" className="play-feedback sticky z-20 mt-5 whitespace-pre-wrap break-words rounded border border-red-400/50 bg-panel p-4 text-sm leading-6 text-red-200 shadow-lg"><p>{props.error}</p>{props.requiresRefresh && <button type="button" disabled={props.loading || props.busy} className="mt-3 min-h-11 rounded border border-brass/50 px-3 py-2 text-brass disabled:opacity-50" onClick={props.onReload}>刷新进度</button>}</div>}
+    {props.error && (!composerOpen || !view?.discussion) && <div role="alert" className="play-feedback sticky z-20 mt-5 whitespace-pre-wrap break-words rounded border border-red-400/50 bg-panel p-4 text-sm leading-6 text-red-200 shadow-lg"><p>{props.error}</p>{props.requiresRefresh && <button type="button" disabled={props.loading || props.busy} className="mt-3 min-h-11 rounded border border-line px-3 py-2 text-mist disabled:opacity-50" onClick={props.onReload}>刷新进度</button>}</div>}
     {props.notice && <p role="status" className="mt-3 break-words border-l-2 border-emerald-500/50 px-3 py-1 text-xs text-mist">{props.notice}</p>}
     {!view && <div className="mt-5 flex flex-wrap items-center gap-4">
       <button type="button" disabled={props.loading || props.busy || (!props.playId && !props.openingSessionId)} onClick={() => { if (!props.loading && !props.busy) props.onReload(); }}
         className="rounded border border-line px-3 py-2 text-sm disabled:opacity-50">刷新进度</button>
-      <Link href={props.openingSessionId ? `/play/package-preview?session=${encodeURIComponent(props.openingSessionId)}` : '/play/package-preview'} className="text-sm text-brass underline">返回开场阅读</Link>
+      <Link href={props.openingSessionId ? `/play/package-preview?session=${encodeURIComponent(props.openingSessionId)}` : '/play/package-preview'} className="text-sm text-mist underline">返回开场阅读</Link>
     </div>}
-    {view && props.pendingTopicReplyKey && view.single_player?.turns.filter(turn => turn.reply_request?.idempotency_key === props.pendingTopicReplyKey).map(turn => <section key={turn.id} aria-label="核对议题回答" className="mt-4 rounded border border-line bg-panel p-4"><p className="text-sm text-mist">“{turn.title}”的回答尚未确认。核对只沿用这次请求。</p><button type="button" disabled={props.loading || props.busy || !props.onTopicReply} className="mt-2 min-h-11 rounded border border-brass/40 px-3 py-2 text-sm text-brass disabled:opacity-40" onClick={() => { if (!props.loading && !props.busy) props.onTopicReply?.(turn.id); }}>检查上次议题回答</button></section>)}
-    {view && props.retryingStatement && <section aria-label="核对上次公开发言" className="mt-4 rounded border border-brass/40 bg-panel p-4"><p className="text-sm text-mist">还有一条公开发言未确认，核对后再继续调查。{props.requiresRefresh ? '请先点击“刷新进度”，再检查这条发言。' : '检查会沿用原请求，不会另发一条新消息。'}</p><button type="button" disabled={!canSpeak} className="mt-2 min-h-11 rounded border border-brass/40 px-3 py-2 text-sm text-brass disabled:opacity-40" onClick={() => { if (canSpeak) props.onSpeak?.(); }}>检查上次发言结果</button></section>}
-    {view && props.onCheckTopic && <section aria-label="核对议题操作" className="mt-4 rounded border border-line bg-panel p-4"><p className="text-sm text-mist">上次议题操作尚未确认，请先核对原请求。</p><button type="button" disabled={props.loading || props.busy} className="mt-2 min-h-11 rounded border border-brass/40 px-3 py-2 text-sm text-brass disabled:opacity-40" onClick={() => { if (!props.loading && !props.busy) props.onCheckTopic?.(); }}>检查上次议题操作</button></section>}
-    {view && singlePlayer && props.retryingResponse && <section aria-label="核对之前的角色回应" className="mt-4 rounded border border-line bg-panel p-4"><p className="text-sm text-mist">之前的角色请求仍需核对，沿用原请求查看结果。</p><button type="button" disabled={!canRespond} className="mt-2 min-h-11 rounded border border-brass/40 px-3 py-2 text-sm text-brass disabled:opacity-40" onClick={() => { if (canRespond) props.onRespond?.(); }}>检查上次回应结果</button></section>}
+    {view && props.pendingTopicReplyKey && view.single_player?.turns.filter(turn => turn.reply_request?.idempotency_key === props.pendingTopicReplyKey).map(turn => <section key={turn.id} aria-label="核对议题回答" className="mt-4 rounded border border-line bg-panel p-4"><p className="text-sm text-mist">“{turn.title}”的回答尚未确认。核对只沿用这次请求。</p><button type="button" disabled={props.loading || props.busy || !props.onTopicReply} className="mt-2 min-h-11 rounded border border-line px-3 py-2 text-sm text-mist disabled:opacity-40" onClick={() => { if (!props.loading && !props.busy) props.onTopicReply?.(turn.id); }}>检查上次议题回答</button></section>)}
+    {view && props.retryingStatement && <section aria-label="核对上次公开发言" className="mt-4 rounded border border-line bg-panel p-4"><p className="text-sm text-mist">还有一条公开发言未确认，核对后再继续调查。{props.requiresRefresh ? '请先点击“刷新进度”，再检查这条发言。' : '检查会沿用原请求，不会另发一条新消息。'}</p><button type="button" disabled={!canSpeak} className="mt-2 min-h-11 rounded border border-line px-3 py-2 text-sm text-mist disabled:opacity-40" onClick={() => { if (canSpeak) props.onSpeak?.(); }}>检查上次发言结果</button></section>}
+    {view && props.onCheckTopic && <section aria-label="核对议题操作" className="mt-4 rounded border border-line bg-panel p-4"><p className="text-sm text-mist">上次议题操作尚未确认，请先核对原请求。</p><button type="button" disabled={props.loading || props.busy} className="mt-2 min-h-11 rounded border border-line px-3 py-2 text-sm text-mist disabled:opacity-40" onClick={() => { if (!props.loading && !props.busy) props.onCheckTopic?.(); }}>检查上次议题操作</button></section>}
+    {view && singlePlayer && props.retryingResponse && <section aria-label="核对之前的角色回应" className="mt-4 rounded border border-line bg-panel p-4"><p className="text-sm text-mist">之前的角色请求仍需核对，沿用原请求查看结果。</p><button type="button" disabled={!canRespond} className="mt-2 min-h-11 rounded border border-line px-3 py-2 text-sm text-mist disabled:opacity-40" onClick={() => { if (canRespond) props.onRespond?.(); }}>检查上次回应结果</button></section>}
     {view && naturalDialogue && props.retryingQuestion && <section aria-label="核对之前的材料提问" className="mt-4 rounded border border-line bg-panel p-4">
       <h2 className="text-sm font-semibold">核对之前的材料提问</h2><p className="mt-2 text-sm leading-6 text-mist">之前保存的材料提问尚未确认结果，可检查原请求。新的角色交流请使用集中发言入口。</p>
-      <button type="button" disabled={!canAsk} onClick={() => { if (canAsk) props.onAsk(); }} className="mt-3 min-h-11 rounded border border-brass px-3 py-2 text-sm text-brass disabled:opacity-50">检查上次提问结果</button>
+      <button type="button" disabled={!canAsk} onClick={() => { if (canAsk) props.onAsk(); }} className="mt-3 min-h-11 rounded border border-line px-3 py-2 text-sm text-mist disabled:opacity-50">检查上次提问结果</button>
     </section>}
     {view && naturalDialogue && view.pending_ai && !props.retryingQuestion && <p role="status" className="mt-4 text-sm text-mist">有一项互动正在处理，刷新查看结果。</p>}
-    {props.onCheckGuided && <button type="button" disabled={props.loading || props.busy} onClick={props.onCheckGuided} className="mt-3 min-h-11 rounded border border-brass px-3 py-2 text-sm text-brass">检查上次流程结果</button>}
+    {props.onCheckGuided && <button type="button" disabled={props.loading || props.busy} onClick={props.onCheckGuided} className="mt-3 min-h-11 rounded border border-line px-3 py-2 text-sm text-mist">检查上次流程结果</button>}
     {props.loading && <p role="status" className="mt-5 text-sm text-mist">正在读取游戏进度…</p>}
     {!props.loading && !props.playId && !props.openingSessionId && <p className="mt-6 text-sm text-mist">请先选择角色、阅读开场，再点击“开始游戏”。</p>}
     {!props.loading && props.view === null && !props.playId && props.openingSessionId && <section aria-label="进入游戏" className="mt-6 rounded border border-line bg-panel p-5">
@@ -573,7 +573,7 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
         <h2 className="text-lg font-semibold">本轮搜证</h2>
         <p className="mt-3 text-sm leading-7 text-mist">行动点由本轮所有角色共享，用于执行搜证动作；与角色互动的轮次分别计算。</p>
         {mechanics ? <>
-          <p className="mt-3 break-all text-sm leading-7 text-brass">本轮共享行动点：剩余 {mechanics.remaining_points} / {mechanics.initial_points} 点，已用 {mechanics.spent_points} 点。</p>
+          <p className="mt-3 break-all text-sm leading-7 text-mist">本轮共享行动点：剩余 {mechanics.remaining_points} / {mechanics.initial_points} 点，已用 {mechanics.spent_points} 点。</p>
           {view.settled ? <p className="mt-3 text-sm text-mist">本轮记录已保存，不能继续搜证。</p>
             : mechanics.available_actions.length ? <ul className="mt-4 space-y-3">{mechanics.available_actions.map(item => {
               const action: PackagePlayAction = { action: 'PERFORM_ACTION', target: { action_id: item.id } };
@@ -582,19 +582,19 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
                 <p className="mt-2 text-xs leading-6 text-mist">消耗 {item.cost} 点</p>
                 <button type="button" aria-label={`执行搜证：${item.label}`} disabled={locked || !canPerformPlayAction(view, action)}
                   onClick={() => { if (!locked && canPerformPlayAction(view, action)) props.onAction(action); }}
-                  className="mt-3 rounded border border-brass px-3 py-2 text-sm text-brass disabled:opacity-50">执行搜证</button>
+                  className="mt-3 rounded border border-line px-3 py-2 text-sm text-mist disabled:opacity-50">执行搜证</button>
               </li>;
             })}</ul>
               : <p className="mt-3 text-sm leading-7 text-mist">{mechanics.remaining_points === 0
                 ? '本轮共享行动点已用尽，当前没有可执行的搜证动作。'
                 : '当前没有可执行的搜证动作。可查看已解锁材料，或刷新核对最新状态。'}</p>}
-        </> : <p role="alert" className="mt-3 text-sm text-brass">搜证状态不完整，请刷新进度核对。</p>}
+        </> : <p role="alert" className="mt-3 text-sm text-mist">搜证状态不完整，请刷新进度核对。</p>}
       </section>}
-      {view.single_player?.stage && <details aria-label="本轮核心目标" className="rounded-lg border border-brass/30 bg-panel px-4 py-2"><summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-brass">本轮核心目标<span className="ml-3 inline-block text-xs font-normal text-mist">建议思考 {phaseThinkingTime(view.full_game?.phase_kind)} 分钟 · 不限时</span></summary>{view.settled ? <p className="mt-3 text-sm leading-7">先阅读自己的结局，再核对真相与分项得分。其他角色的结局可以按需展开查看。</p> : <><p className="mt-3 text-sm leading-6">{view.single_player.stage.goal}</p><ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-7">{view.single_player.stage.instructions.map((item, index) => <li key={index}>{item}</li>)}</ol><p aria-label="本阶段完成状态" className="mt-3 text-sm leading-7 text-mist">{view.single_player.stage.completion}</p><p className="mt-2 text-xs text-mist">遇到卡点，可随时点击顶部“询问主持人”。</p>{page !== 'private' && view.single_player.topics.some(topic => topic.responders.some(responder => responder.channels.includes('PUBLIC'))) && <button type="button" className="mt-3 min-h-11 rounded border border-brass/40 px-3 py-2 text-sm text-brass" onClick={openComposer}>围绕本轮议题交流</button>}</>}</details>}
+      {view.single_player?.stage && <details aria-label="本轮核心目标" className="rounded-md border border-line bg-panel px-4 py-2"><summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-mist">本轮核心目标<span className="ml-3 inline-block text-xs font-normal text-mist">建议思考 {phaseThinkingTime(view.full_game?.phase_kind)} 分钟 · 不限时</span></summary>{view.settled ? <p className="mt-3 text-sm leading-7">先阅读自己的结局，再核对真相与分项得分。其他角色的结局可以按需展开查看。</p> : <><p className="mt-3 text-sm leading-6">{view.single_player.stage.goal}</p><ol className="mt-3 list-decimal space-y-2 pl-5 text-sm leading-7">{view.single_player.stage.instructions.map((item, index) => <li key={index}>{item}</li>)}</ol><p aria-label="本阶段完成状态" className="mt-3 text-sm leading-7 text-mist">{view.single_player.stage.completion}</p><p className="mt-2 text-xs text-mist">遇到卡点，可随时点击顶部“询问主持人”。</p>{page !== 'private' && view.single_player.topics.some(topic => topic.responders.some(responder => responder.channels.includes('PUBLIC'))) && <button type="button" className="mt-3 min-h-11 rounded border border-line px-3 py-2 text-sm text-mist" onClick={openComposer}>围绕本轮议题交流</button>}</>}</details>}
       {singlePlayer && !view.settled && !view.single_player?.available && <p role="status" className="text-sm text-mist">当前单人流程暂不可用，已保存资料和记录仍可阅读。</p>}
       {showReading && <>
       <div id="play-reading" className="play-scroll-target" />
-      {guided && !singlePlayer && <section aria-label="本局操作说明" className="rounded-lg border border-brass/40 bg-panel p-5"><h2 className="font-semibold">本局操作说明</h2><p className="mt-3 text-sm leading-7 text-mist">本局搜证由你直接选择地点；其他角色会按流程分享必须说明的线索。只有终局指认与信任保留各角色投票。</p></section>}
+      {guided && !singlePlayer && <section aria-label="本局操作说明" className="rounded-md border border-line bg-panel p-5"><h2 className="font-semibold">本局操作说明</h2><p className="mt-3 text-sm leading-7 text-mist">本局搜证由你直接选择地点；其他角色会按流程分享必须说明的线索。只有终局指认与信任保留各角色投票。</p></section>}
       {Boolean(view.reading_supplements?.length) && <section aria-label="开场补充资料" className="min-w-0 rounded border border-line bg-panel p-5">
         <h2 className="text-lg font-semibold">开场补充资料</h2>
         <div className="mt-4 space-y-4">{view.reading_supplements!.map(item => <div key={item.id}><PlayText text={item.text} /></div>)}</div>
@@ -605,7 +605,7 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
       {materials('我的未公开线索', 'evidence', view.private_evidence.filter(item => !view.public_evidence.some(shared => shared.id === item.id)), false)}
       <section aria-label="阶段操作" id="play-phase-actions" className="min-w-0 rounded border border-line bg-panel p-5">
         <h2 className="text-lg font-semibold">阅读与回看</h2>
-        {view.settled ? <p className="mt-3 text-sm text-mist">结局已揭晓，资料和记录保留供回看。</p> : guided && currentPage !== 'reading' ? <><p className="mt-3 text-sm text-mist">这里保存已解锁的阅读材料。返回当前步骤继续游戏。</p><button type="button" className="mt-4 min-h-11 rounded border border-line px-4 py-2 text-sm text-brass" onClick={() => goToPage(currentPage)}>回到{currentPage === 'finale' ? '终局答卷' : '当前调查'}</button></> : view.phase_complete ? <>
+        {view.settled ? <p className="mt-3 text-sm text-mist">结局已揭晓，资料和记录保留供回看。</p> : guided && currentPage !== 'reading' ? <><p className="mt-3 text-sm text-mist">这里保存已解锁的阅读材料。返回当前步骤继续游戏。</p><button type="button" className="mt-4 min-h-11 rounded border border-line px-4 py-2 text-sm text-mist" onClick={() => goToPage(currentPage)}>回到{currentPage === 'finale' ? '终局答卷' : '当前调查'}</button></> : view.phase_complete ? <>
           <p className="mt-3 text-sm text-mist">{canFinishPlayPhase(view) ? '阶段材料已走到末段。点击结束后才揭晓结尾与真相，之后保留记录供阅读。' : '本轮搜证尚未满足阶段结束条件。满足条件后，才能结束并揭晓结尾与真相。'}</p>
           <button type="button" disabled={locked || !canPerformPlayAction(view, { action: 'SETTLE' })} onClick={() => { if (!locked && canPerformPlayAction(view, { action: 'SETTLE' })) props.onAction({ action: 'SETTLE' }); }} className="mt-4 min-h-11 rounded bg-brass px-4 py-3 text-sm font-semibold text-ink disabled:opacity-40">结束并揭晓真相</button>
         </> : <><p className="mt-3 text-sm leading-7 text-mist">阅读完成后，点击固定顶栏右上角的“进入下一阶段”。你仍可随时回看已获材料。</p>
@@ -613,14 +613,14 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
       </section>
       </>}
       {guided && page === 'investigation' && <><PlayGuidedStage view={view} locked={Boolean(locked)} onGuided={props.onGuided} />
-        {(view.table_decisions?.requests.some(r => r.status === 'PENDING' && r.action !== 'SEAL_FINALE') || view.phone_turns?.requests.some(r => r.status === 'PENDING')) && <section aria-label="核对旧流程记录" className="rounded-lg border border-brass/40 bg-panel p-5"><h2 className="font-semibold">核对旧流程记录</h2><p className="mt-3 text-sm leading-7 text-mist">上一版有尚未确认的请求。先核对原请求或结束过期等待，再按当前流程调查。检查只读取原请求的处理结果。</p><div className="mt-3 flex flex-wrap gap-3">
-          {view.table_decisions?.requests.filter(r => r.status === 'PENDING' && r.action !== 'SEAL_FINALE').map(r => <button key={r.request_id} type="button" disabled={locked || !props.onDecide} className="min-h-11 rounded border border-brass/40 px-3 py-2 text-sm text-brass disabled:opacity-40" onClick={() => { if (!locked) props.onDecide?.(r.character_id, r.action); }}>核对{view.characters.find(c => c.id === r.character_id)?.name}的旧调查请求</button>)}
-          {view.phone_turns?.requests.filter(r => r.status === 'PENDING').map(r => <button key={r.request_id} type="button" disabled={locked || !props.onPhone} className="min-h-11 rounded border border-brass/40 px-3 py-2 text-sm text-brass disabled:opacity-40" onClick={() => { if (!locked) props.onPhone?.('STEP'); }}>核对旧电话请求</button>)}
+        {(view.table_decisions?.requests.some(r => r.status === 'PENDING' && r.action !== 'SEAL_FINALE') || view.phone_turns?.requests.some(r => r.status === 'PENDING')) && <section aria-label="核对旧流程记录" className="rounded-md border border-line bg-panel p-5"><h2 className="font-semibold">核对旧流程记录</h2><p className="mt-3 text-sm leading-7 text-mist">上一版有尚未确认的请求。先核对原请求或结束过期等待，再按当前流程调查。检查只读取原请求的处理结果。</p><div className="mt-3 flex flex-wrap gap-3">
+          {view.table_decisions?.requests.filter(r => r.status === 'PENDING' && r.action !== 'SEAL_FINALE').map(r => <button key={r.request_id} type="button" disabled={locked || !props.onDecide} className="min-h-11 rounded border border-line px-3 py-2 text-sm text-mist disabled:opacity-40" onClick={() => { if (!locked) props.onDecide?.(r.character_id, r.action); }}>核对{view.characters.find(c => c.id === r.character_id)?.name}的旧调查请求</button>)}
+          {view.phone_turns?.requests.filter(r => r.status === 'PENDING').map(r => <button key={r.request_id} type="button" disabled={locked || !props.onPhone} className="min-h-11 rounded border border-line px-3 py-2 text-sm text-mist disabled:opacity-40" onClick={() => { if (!locked) props.onPhone?.('STEP'); }}>核对旧电话请求</button>)}
         </div></section>}
         {materials('本局已公开调查线索', 'evidence', view.public_evidence, true)}{materials('我的未公开调查线索', 'evidence', view.private_evidence.filter(item => !view.public_evidence.some(shared => shared.id === item.id)), false)}</>}
       {view.full_game && <div hidden={guided && page !== 'private' && page !== 'finale'} className="space-y-5"><FullGamePanel excludePrivate key={pageScope} ownerId={props.ownerId} view={view} locked={Boolean(locked)} onTable={props.onTable} onDecide={props.onDecide} onPrivateReply={props.onPrivateReply} onPhone={props.onPhone} onTopic={props.onTopic} onTopicReply={props.onTopicReply} pendingTopicReplyKey={props.pendingTopicReplyKey} recoveryLocked={props.loading || props.busy} renderSpeech={speech.render} section={guided ? page === 'private' ? 'private' : currentPage === 'finale' ? 'finale' : 'private' : 'all'} onFinaleVotes={props.onFinaleVotes} finaleVotesNeedsConfirmation={props.finaleVotesNeedsConfirmation} finaleVotesProgress={props.finaleVotesProgress} /></div>}
       {guided && page === 'finale' && !view.settled && <section aria-label="揭晓终局" className="rounded border border-line bg-panel p-5"><p className="text-sm text-mist">所有人封存答卷后，揭晓个人得分与结局。</p><button type="button" disabled={locked || !canPerformPlayAction(view, { action: 'SETTLE' })} onClick={() => { if (!locked && canPerformPlayAction(view, { action: 'SETTLE' })) props.onAction({ action: 'SETTLE' }); }} className="mt-3 min-h-11 rounded bg-brass px-4 py-3 text-sm font-semibold text-ink disabled:opacity-40">结束并揭晓真相</button></section>}
-      {showReading && view.memories && <section id="play-memories" aria-label="我的私密回忆" className="min-w-0 rounded border border-brass/40 bg-panel p-5">
+      {showReading && view.memories && <section id="play-memories" aria-label="我的私密回忆" className="min-w-0 rounded border border-line bg-panel p-5">
         <h2 className="text-lg font-semibold">我的私密回忆</h2>
         <p className="mt-3 text-sm leading-7 text-mist">听到其他角色实际说出关键词，或取得对应线索后，系统会自动授予回忆。自己说词不能触发。原卡只属于你；已想起的内容随本局保存，也可在随身手记中查看。</p>
         {visibleMemories.length ? <ul className="mt-4 space-y-3">{visibleMemories.map(item => { const cause = item.cause; return <li key={item.id} className="min-w-0 rounded border border-line p-4">
@@ -630,10 +630,10 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
             : cause.kind === 'OTHER_HEARD_SPEECH'
               ? `听到${view.characters.find(role => role.id === cause.speaker)?.name || '其他角色'}的${cause.channel === 'PRIVATE' ? '电话发言' : '公开发言'}后想起`
             : '取得相关线索后想起'} · {item.sequence === 0 ? '开场' : `第 ${item.sequence} 条记录`}</p>
-          <p className="mt-2 text-xs leading-6 text-brass">{item.retelling === 'MUST_RETELL'
+          <p className="mt-2 text-xs leading-6 text-mist">{item.retelling === 'MUST_RETELL'
             ? '剧本要求你用自己的话把相关内容告诉大家，不能出示原卡。'
             : '你可以用自己的话向大家讲述，不能出示原卡。'}</p>
-          <details className="mt-3"><summary className="cursor-pointer text-sm text-brass">阅读这段回忆</summary>
+          <details className="mt-3"><summary className="cursor-pointer text-sm text-mist">阅读这段回忆</summary>
             <p className="mt-3 text-xs text-mist">{item.kind === 'FACT' ? '本角色已知材料' : item.kind === 'CLAIM' ? '角色说法' : '角色推测'} · 尚未成为公开证据</p>
             <PlayText text={item.text} />
             {view.visuals?.filter(v => v.collection === 'memory' && v.material_id === item.id).map(v =>
@@ -649,7 +649,7 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
           <p className="break-all text-sm font-semibold">{view.characters.find(item => item.id === entry.speaker)?.name} · 角色说法</p>
           <p className="mt-1 text-xs text-mist">{entry.phase_id === view.current_phase.id ? '当前阶段' : '之前阶段'} · 第 {entry.sequence} 条记录</p>
           {entry.speaker === view.selected_character_id ? <PlayText text={entry.text} /> : speech.render(entry)}
-          <div className="mt-3 flex flex-wrap gap-4 text-xs text-brass">
+          <div className="mt-3 flex flex-wrap gap-4 text-xs text-mist">
             {props.ownerId && <button type="button" disabled={readingActionsLocked} onClick={() => { if (!readingActionsLocked) setClip({ scope: clipScope, id: `speech:${entry.id}`, title: `${view.characters.find(c => c.id === entry.speaker)?.name}的发言`, text: entry.text }); }}>收藏这条发言</button>}
           </div>
         </li>)}</ol> : <p className="mt-3 text-sm text-mist">还没有公共发言。</p>}
@@ -658,18 +658,18 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
         <h2 className="text-lg font-semibold">AI 调查建议</h2>
         <p className="mt-3 text-sm leading-7 text-mist">向其他角色询问下一步调查哪里。对方根据自己掌握的材料和你们的讨论给出建议；不会替你执行搜证或投票。</p>
         <p className="mt-2 text-xs leading-6 text-mist">征求一次建议计一轮 AI 互动。你也可以先在底部发言，说明想调查的方向。</p>
-        <p role="status" className="mt-3 text-sm text-brass">{proposalAvailability(view, props.proposalCharacter || '')}</p>
-        {view.full_game?.phase_kind === 'READING' && <a href="#play-phase-actions" className="mt-3 inline-block text-sm text-brass underline">查看顶栏右上角的阶段操作</a>}
+        <p role="status" className="mt-3 text-sm text-mist">{proposalAvailability(view, props.proposalCharacter || '')}</p>
+        {view.full_game?.phase_kind === 'READING' && <a href="#play-phase-actions" className="mt-3 inline-block text-sm text-mist underline">查看顶栏右上角的阶段操作</a>}
         {((!singlePlayer && !view.settled) || props.retryingProposal) && <div className="mt-4 space-y-3">
           <div className="block text-sm">征求谁的建议<PlaySelect presentation="choices" label="征求谁的建议" value={props.proposalCharacter || ''} disabled={locked || props.retryingProposal} onChange={id => props.onProposalCharacterChange?.(id)} placeholder="请选择 AI 角色" options={view.characters.filter(item => item.id !== view.selected_character_id).map(item => ({ value: item.id, label: item.name }))} /></div>
-          <button type="button" disabled={!canPropose} onClick={() => { if (canPropose) props.onPropose?.(); }} className="rounded bg-brass px-4 py-3 text-sm font-semibold text-ink disabled:opacity-50">
+          <button type="button" disabled={!canPropose} onClick={() => { if (canPropose) props.onPropose?.(); }} className="min-h-11 rounded-md bg-paper px-4 py-3 text-sm font-medium text-ink transition-colors hover:bg-mist disabled:opacity-50">
             {props.retryingProposal ? '检查上次建议结果' : '征求调查建议'}</button>
         </div>}
         {view.investigation_proposals.entries.length ? <ol className="mt-4 space-y-3">{view.investigation_proposals.entries.map(entry => <li key={entry.id} className="min-w-0 rounded border border-line p-4">
           <h3 className="break-all font-semibold">{view.characters.find(item => item.id === entry.speaker)?.name} · 调查建议</h3>
           <p className="mt-1 text-xs text-mist">{entry.phase_id === view.current_phase.id ? '当前阶段' : '之前阶段'} · 第 {entry.sequence} 条记录 · 仅为建议</p>
           <PlayText text={entry.text} />
-          {entry.basis.length > 0 && <details className="mt-3"><summary className="cursor-pointer text-sm text-brass">查看引用的公开信息</summary><ul className="mt-3 space-y-3">{entry.basis.map(ref => <li key={`${ref.collection}:${ref.id}`}>
+          {entry.basis.length > 0 && <details className="mt-3"><summary className="cursor-pointer text-sm text-mist">查看引用的公开信息</summary><ul className="mt-3 space-y-3">{entry.basis.map(ref => <li key={`${ref.collection}:${ref.id}`}>
             <p className="text-xs text-mist">{kindLabels[ref.kind]}{ref.speaker ? ` · ${view.characters.find(item => item.id === ref.speaker)?.name || '角色'}` : ''}</p>
             <PlayText text={ref.text} />
           </li>)}</ul></details>}
@@ -679,46 +679,46 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
       {!naturalDialogue && <section aria-label="向 AI 角色提问" className="min-w-0 rounded border border-line bg-panel p-5">
         <h2 className="text-lg font-semibold">向 AI 角色提问</h2>
         <p className="mt-3 text-sm leading-7 text-mist">回答只使用核验后允许公开的资料原文；没有可回答的资料时也会保留标准答复，不会补编情节。</p>
-        {!view.model.available && !view.settled && <p role="status" className="mt-3 text-sm leading-7 text-brass">{view.model.reason === 'QUESTION_LIMIT' ? '本局已达到 AI 互动轮数上限。' : view.model.reason === 'FINALE_SEALING' ? '当前请完成终局答卷与封卷。' : '当前暂时无法开始新的 AI 互动。'}{view.mechanics === undefined ? '已获得的材料仍可阅读。' : '你仍可按规则查看调查进度和已获得的材料。'}</p>}
-        {view.pending_ai && <p role="status" className="mt-3 text-sm leading-7 text-brass">有一条提问尚未确认结果。可刷新查看；重试同一提问不会重复调用模型。新操作若仍受占用，会提示刷新。</p>}
+        {!view.model.available && !view.settled && <p role="status" className="mt-3 text-sm leading-7 text-mist">{view.model.reason === 'QUESTION_LIMIT' ? '本局已达到 AI 互动轮数上限。' : view.model.reason === 'FINALE_SEALING' ? '当前请完成终局答卷与封卷。' : '当前暂时无法开始新的 AI 互动。'}{view.mechanics === undefined ? '已获得的材料仍可阅读。' : '你仍可按规则查看调查进度和已获得的材料。'}</p>}
+        {view.pending_ai && <p role="status" className="mt-3 text-sm leading-7 text-mist">有一条提问尚未确认结果。可刷新查看；重试同一提问不会重复调用模型。新操作若仍受占用，会提示刷新。</p>}
         {view.last_ai_status && Object.hasOwn(aiStatusLabels, view.last_ai_status) && <p role="status" className="mt-3 text-sm leading-7 text-mist">{aiStatusLabels[view.last_ai_status]}</p>}
-        {view.ai_interactions && <p className="mt-3 text-sm leading-6 text-brass">本局 AI 互动：已发起 {view.ai_interactions.initiated} / 最多 {view.ai_interactions.limit} 轮。角色回应、调查建议和 AI 行动共用轮次；重看已保存结果不重复计数。</p>}
+        {view.ai_interactions && <p className="mt-3 text-sm leading-6 text-mist">本局 AI 互动：已发起 {view.ai_interactions.initiated} / 最多 {view.ai_interactions.limit} 轮。角色回应、调查建议和 AI 行动共用轮次；重看已保存结果不重复计数。</p>}
         {!view.settled && <div className="mt-4 min-w-0 space-y-4">
           <div className="block text-sm">提问对象<PlaySelect presentation="choices" label="提问对象" value={props.characterId} disabled={locked || !view.model.available} onChange={props.onCharacterChange} placeholder="请选择其他角色" options={view.characters.filter(item => item.id !== view.selected_character_id).map(item => ({ value: item.id, label: item.name }))} /></div>
           <label className="block text-sm">你的问题<textarea value={props.question} disabled={locked || !view.model.available} onChange={event => props.onQuestionChange(event.target.value)} rows={3} maxLength={2000} className="mt-2 w-full min-w-0 max-w-full rounded border border-line bg-ink p-3 text-paper" /></label>
           <PlayVoiceInput ownerId={props.ownerId} playId={view.play_id} phaseId={view.current_phase.id} revision={view.revision} channel="QUESTION" disabled={locked || !view.model.available || props.retryingQuestion} value={props.question} onChange={props.onQuestionChange} />
           <p className="text-xs text-mist">{Array.from(props.question.trim()).length} / 1000 字符。请围绕人物、经历和线索提问；游戏外任务和索取隐藏资料会被拒绝。</p>
-          {Array.from(props.question.trim()).length > 1000 && <p role="alert" className="text-xs text-brass">问题超过 1000 个字符，请缩短后再发送。</p>}
-          <button type="button" disabled={!canAsk} onClick={() => { if (canAsk) props.onAsk(); }} className="rounded bg-brass px-4 py-3 text-sm font-semibold text-ink disabled:opacity-50">{props.busy ? '正在保存…' : props.retryingQuestion ? '检查上次提问结果' : '发送问题'}</button>
+          {Array.from(props.question.trim()).length > 1000 && <p role="alert" className="text-xs text-mist">问题超过 1000 个字符，请缩短后再发送。</p>}
+          <button type="button" disabled={!canAsk} onClick={() => { if (canAsk) props.onAsk(); }} className="min-h-11 rounded-md bg-paper px-4 py-3 text-sm font-medium text-ink transition-colors hover:bg-mist disabled:opacity-50">{props.busy ? '正在保存…' : props.retryingQuestion ? '检查上次提问结果' : '发送问题'}</button>
         </div>}
       </section>}
       {(!naturalDialogue || view.dialogue.length > 0) && <section aria-label="已保存的角色答复" className="min-w-0 rounded border border-line bg-panel p-5">
         <h2 className="text-lg font-semibold">已保存的角色答复</h2>
         {view.dialogue.length ? <ol className="mt-4 space-y-4">{view.dialogue.map((entry, index) => <li key={index} className="min-w-0 rounded border border-line p-4">
           <h3 className="break-all font-semibold">{entry.character_name}</h3><PlayText text={entry.text} />
-          {entry.materials.length > 0 && <details className="mt-3"><summary className="cursor-pointer text-sm text-brass">查看本次回答引用的公开资料</summary><ul className="mt-3 space-y-3">{entry.materials.map((item, itemIndex) => <li key={itemIndex} className="min-w-0"><PlayText text={item.text} />{item.kind && <p className="mt-1 text-xs text-mist">{kindLabels[item.kind]}</p>}</li>)}</ul></details>}
+          {entry.materials.length > 0 && <details className="mt-3"><summary className="cursor-pointer text-sm text-mist">查看本次回答引用的公开资料</summary><ul className="mt-3 space-y-3">{entry.materials.map((item, itemIndex) => <li key={itemIndex} className="min-w-0"><PlayText text={item.text} />{item.kind && <p className="mt-1 text-xs text-mist">{kindLabels[item.kind]}</p>}</li>)}</ul></details>}
         </li>)}</ol> : <p className="mt-3 text-sm text-mist">尚无已保存的角色答复。</p>}
       </section>}
       </>}
       {showFinale && <PlayEndingPanel key={pageScope} view={view} />}
     </article>}
     {view && <>
-      {view.discussion && (!guided || page !== 'finale') && <aside onKeyDown={event => { if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); setComposerOpen(false); event.currentTarget.querySelector<HTMLButtonElement>('button[aria-controls="play-composer"]')?.focus(); } }} aria-label="底部发言面板" className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-4xl border-t border-brass/40 bg-panel p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-2xl md:rounded-t-2xl">
+      {view.discussion && (!guided || page !== 'finale') && <aside onKeyDown={event => { if (event.key === 'Escape' && !event.defaultPrevented) { event.preventDefault(); setComposerOpen(false); event.currentTarget.querySelector<HTMLButtonElement>('button[aria-controls="play-composer"]')?.focus(); } }} aria-label="底部发言面板" className="fixed inset-x-0 bottom-0 z-40 mx-auto max-w-4xl border-t border-line bg-panel p-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] shadow-sm md:rounded-t-2xl">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <button type="button" aria-expanded={composerOpen} aria-controls="play-composer" onClick={() => composerOpen ? setComposerOpen(false) : openComposer()} className="rounded-lg bg-brass px-4 py-2 text-sm font-semibold text-ink">{composerOpen ? '收起发言面板' : view.settled ? '查看角色回应' : singlePlayer ? '议题 / 发言' : '发言 / 提问'}</button>
-          <a className="text-sm text-brass" href="#play-discussion" onClick={event => navigate(event, 'discussion')}>查看公共讨论</a>
-          {composerMode === 'PUBLIC' && view.role_responses?.entries.length ? <a className="text-sm text-brass" href={`#play-message-${view.role_responses.entries.at(-1)!.id}`} onClick={event => navigate(event, 'discussion')}>最新回应</a> : null}
-          {props.busy && <span role="status" className="text-xs text-brass">正在处理，请稍候…</span>}
+          <button type="button" aria-expanded={composerOpen} aria-controls="play-composer" onClick={() => composerOpen ? setComposerOpen(false) : openComposer()} className="min-h-11 rounded-md border border-line bg-raised px-4 py-2 text-sm font-medium text-mist hover:text-paper">{composerOpen ? '收起发言面板' : view.settled ? '查看角色回应' : singlePlayer ? '议题 / 发言' : '发言 / 提问'}</button>
+          <a className="text-sm text-mist" href="#play-discussion" onClick={event => navigate(event, 'discussion')}>查看公共讨论</a>
+          {composerMode === 'PUBLIC' && view.role_responses?.entries.length ? <a className="text-sm text-mist" href={`#play-message-${view.role_responses.entries.at(-1)!.id}`} onClick={event => navigate(event, 'discussion')}>最新回应</a> : null}
+          {props.busy && <span role="status" className="text-xs text-mist">正在处理，请稍候…</span>}
         </div>
           <fieldset aria-label="发言模式" hidden={!composerOpen} className="mt-3 shrink-0 grid grid-cols-2 gap-2">
             <legend className="sr-only">发言模式</legend>
             {(['PUBLIC', 'PRIVATE'] as const).map(mode => <label key={mode} className="cursor-pointer">
               <input type="radio" name="play-composer-mode" value={mode} checked={composerMode === mode} onChange={() => { setComposerMode(mode); if (composerBody.current) composerBody.current.scrollTop = 0; }} className="peer sr-only" />
-              <span className="flex min-h-11 items-center justify-center rounded-lg border border-line px-3 py-3 text-sm text-mist peer-checked:border-brass peer-checked:bg-brass/15 peer-checked:text-brass peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-brass">{mode === 'PUBLIC' ? '公开发言' : '单独对话'}</span>
+              <span className="flex min-h-11 items-center justify-center rounded-md border border-line px-3 py-3 text-sm text-mist peer-checked:border-mist peer-checked:bg-white/15 peer-checked:text-mist peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-mist">{mode === 'PUBLIC' ? '公开发言' : '单独对话'}</span>
             </label>)}
           </fieldset>
         <div id="play-composer" ref={composerBody} hidden={!composerOpen} className="mt-3 max-h-[42vh] overflow-y-auto overscroll-contain pr-1">
-          {props.error && <div role="alert" className="mb-3 whitespace-pre-wrap break-words rounded border border-red-400/50 bg-panel p-3 text-sm leading-6 text-red-200"><p>{props.error}</p>{props.requiresRefresh && <button type="button" disabled={props.loading || props.busy} className="mt-3 min-h-11 rounded border border-brass/50 px-3 py-2 text-brass disabled:opacity-50" onClick={props.onReload}>刷新进度</button>}</div>}
+          {props.error && <div role="alert" className="mb-3 whitespace-pre-wrap break-words rounded border border-red-400/50 bg-panel p-3 text-sm leading-6 text-red-200"><p>{props.error}</p>{props.requiresRefresh && <button type="button" disabled={props.loading || props.busy} className="mt-3 min-h-11 rounded border border-line px-3 py-2 text-mist disabled:opacity-50" onClick={props.onReload}>刷新进度</button>}</div>}
 
           <div hidden={composerMode !== 'PUBLIC'} aria-label="公开发言模式">
 <div>        {(!view.settled || props.retryingStatement) && <div className="mt-4 space-y-3">
@@ -727,9 +727,9 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
             className="mt-2 w-full min-w-0 max-w-full rounded border border-line bg-ink p-3 text-paper" /></label>
           <PlayVoiceInput ownerId={props.ownerId} playId={view.play_id} phaseId={view.current_phase.id} revision={view.revision} channel="PUBLIC" active={composerOpen && composerMode === 'PUBLIC'} disabled={locked || props.retryingStatement || !props.onStatementChange} value={props.statement || ''} onChange={text => props.onStatementChange?.(text)} />
           <p className="text-xs text-mist">{Array.from((props.statement || '').trim()).length} / 1000 字符。{view.discussion.entries.length} / {view.discussion.limit} 条已保存。</p>
-          {Array.from((props.statement || '').trim()).length > 1000 && <p role="alert" className="text-xs text-brass">发言超过 1000 个字符，请缩短后发送。</p>}
-          {view.discussion.entries.length >= view.discussion.limit && <p role="status" className="text-xs text-brass">本次试玩已达到发言上限，已有记录仍可阅读。</p>}
-          <button type="button" disabled={!canSpeak} onClick={() => { if (canSpeak) props.onSpeak?.(); }} className="rounded bg-brass px-4 py-3 text-sm font-semibold text-ink disabled:opacity-50">
+          {Array.from((props.statement || '').trim()).length > 1000 && <p role="alert" className="text-xs text-mist">发言超过 1000 个字符，请缩短后发送。</p>}
+          {view.discussion.entries.length >= view.discussion.limit && <p role="status" className="text-xs text-mist">本次试玩已达到发言上限，已有记录仍可阅读。</p>}
+          <button type="button" disabled={!canSpeak} onClick={() => { if (canSpeak) props.onSpeak?.(); }} className="min-h-11 rounded-md bg-paper px-4 py-3 text-sm font-medium text-ink transition-colors hover:bg-mist disabled:opacity-50">
             {props.retryingStatement ? '检查上次发言结果' : '发送公开发言'}</button>
           {singlePlayer && <p className="text-xs text-mist">可以直接发表你的看法；向角色询问时，请确认下方匹配的具体问题。</p>}
         </div>}
@@ -737,15 +737,15 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
 {singlePlayer && <PlayTopicExchange key={`${pageScope}:public`} view={view} channel="PUBLIC" questionText={props.statement || latestHumanStatement(view)?.text || ''} locked={Boolean(locked || props.retryingQuestion || props.retryingResponse || props.retryingProposal || props.retryingStatement)} recoveryLocked={props.loading || props.busy} pendingReplyKey={props.pendingTopicReplyKey} onTopic={props.onTopic} onReply={props.onTopicReply} renderSpeech={speech.render} />}
       {!singlePlayer && view.role_responses && <section aria-label="角色回应" className="min-w-0 rounded border border-line bg-panel p-5">
         <h2 className="text-lg font-semibold">角色回应</h2>
-        {naturalDialogue && view.ai_interactions && <p className="mt-3 text-sm leading-6 text-brass">本局 AI 互动：已发起 {view.ai_interactions.initiated} / 最多 {view.ai_interactions.limit} 轮。角色回应、调查建议和 AI 行动共用轮次；重看已保存结果不重复计数。</p>}
+        {naturalDialogue && view.ai_interactions && <p className="mt-3 text-sm leading-6 text-mist">本局 AI 互动：已发起 {view.ai_interactions.initiated} / 最多 {view.ai_interactions.limit} 轮。角色回应、调查建议和 AI 行动共用轮次；重看已保存结果不重复计数。</p>}
         <p className="mt-3 text-sm leading-7 text-mist">选择一位角色回应你刚发送的内容。回答会出现在公共讨论中。</p>
-        {!view.role_responses.available && <p role="status" className="mt-3 text-sm text-brass">请先保存本阶段的发言。若当前无法继续互动，已有对话仍可阅读。</p>}
+        {!view.role_responses.available && <p role="status" className="mt-3 text-sm text-mist">请先保存本阶段的发言。若当前无法继续互动，已有对话仍可阅读。</p>}
         {(!view.settled || props.retryingResponse) && <div className="mt-4 space-y-3">
           {replyTarget && <div aria-label="本次回应的发言" className="rounded border border-line p-3 text-sm"><p className="mb-2 text-mist">{props.retryingResponse ? '正在核对的原发言' : '你刚发送的内容'}</p><PlayText text={replyTarget.text} /></div>}
-          {replyClarification && <p role="status" className="text-sm leading-6 text-brass">{replyClarification}</p>}
+          {replyClarification && <p role="status" className="text-sm leading-6 text-mist">{replyClarification}</p>}
           {!props.retryingResponse && props.statement?.trim() && <p className="text-sm text-mist">请先发送当前草稿，再请角色回应。</p>}
           <div className="block text-sm">请谁回应<PlaySelect presentation="choices" label="请谁回应" value={props.responseCharacter || ''} disabled={locked || props.retryingResponse} onChange={id => props.onResponseCharacterChange?.(id)} placeholder="请选择 AI 角色" options={view.characters.filter(item => item.id !== view.selected_character_id).map(item => ({ value: item.id, label: item.name }))} /></div>
-          <button type="button" disabled={!canRespond} onClick={() => { if (canRespond) props.onRespond?.(); }} className="rounded bg-brass px-4 py-3 text-sm font-semibold text-ink disabled:opacity-50">
+          <button type="button" disabled={!canRespond} onClick={() => { if (canRespond) props.onRespond?.(); }} className="min-h-11 rounded-md bg-paper px-4 py-3 text-sm font-medium text-ink transition-colors hover:bg-mist disabled:opacity-50">
             {props.retryingResponse ? '检查上次回应结果' : '请角色回应'}</button>
         </div>}
         <p className="mt-3 text-xs leading-6 text-mist">可在公共讨论中继续查看完整对话。</p>

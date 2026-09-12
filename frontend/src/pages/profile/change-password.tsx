@@ -92,7 +92,7 @@ const ChangePasswordPage: React.FC = () => {
             <div className="mx-auto h-12 w-12 bg-brass/15 border border-brass/40 rounded-full flex items-center justify-center mb-4">
               <Shield className="h-6 w-6 text-brass" />
             </div>
-            <h1 className="font-dossier text-2xl font-bold text-paper mb-2">
+            <h1 className="font-dossier text-2xl font-semibold text-paper mb-2">
               修改密码
             </h1>
             <p className="text-mist text-sm">

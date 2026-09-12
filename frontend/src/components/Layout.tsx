@@ -15,7 +15,7 @@ const Layout = ({ children, backgroundImage }: LayoutProps) => {
           style={{ backgroundImage: `url(${backgroundImage})` }}
         />
       ) : (
-        <div className="absolute inset-0 bg-gradient-to-b from-[#0C0F14] via-[#0E1116] to-[#11151D]" />
+        <div className="absolute inset-0 bg-gradient-to-b from-[#08090a] via-[#08090a] to-[#161718]" />
       )}
 
       {/* 遮罩层 */}

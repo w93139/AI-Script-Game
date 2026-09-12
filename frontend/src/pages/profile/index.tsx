@@ -123,7 +123,7 @@ const ProfilePage: React.FC = () => {
           {/* 页面标题 */}
           <div className="flex items-center gap-3">
             <User className="h-6 w-6 text-brass" />
-            <h1 className="font-dossier text-2xl font-bold text-paper">个人中心</h1>
+            <h1 className="font-dossier text-2xl font-semibold text-paper">个人中心</h1>
           </div>
 
           <Tabs defaultValue="profile" className="gap-6">
@@ -188,7 +188,7 @@ const ProfilePage: React.FC = () => {
                       { label: '游玩时长', value: '--' },
                     ].map(stat => (
                       <div key={stat.label} className="bg-raised rounded-sm p-4 text-center border border-hairline">
-                        <div className="text-2xl font-bold text-brass">{stat.value}</div>
+                        <div className="text-2xl font-semibold text-brass">{stat.value}</div>
                         <div className="text-xs text-mist mt-1">{stat.label}</div>
                       </div>
                     ))}

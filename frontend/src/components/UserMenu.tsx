@@ -88,7 +88,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ collapsed = false, variant = 'defau
             variant === 'compact' ? "p-2" : ""
           )}
         >
-          <div className="h-8 w-8 rounded-full bg-brass/20 border border-brass/40 flex items-center justify-center">
+          <div className="h-8 w-8 rounded-full bg-raised border border-line flex items-center justify-center">
             {user.avatar_url ? (
               <Image
                 src={user.avatar_url}
@@ -99,7 +99,7 @@ const UserMenu: React.FC<UserMenuProps> = ({ collapsed = false, variant = 'defau
                 className="h-8 w-8 rounded-full object-cover"
               />
             ) : (
-              <User className="h-4 w-4 text-brass" />
+              <User className="h-4 w-4 text-mist" />
             )}
           </div>
           {!collapsed && variant !== 'compact' && (

@@ -6,9 +6,17 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { Toaster } from 'sonner';
 import { Loader2 } from 'lucide-react';
+import { Inter } from 'next/font/google';
 import { useAuthStore } from '@/stores/authStore';
 import { useEffect, useState, useCallback } from 'react';
 import PageLoader from '@/components/PageLoader';
+
+// Linear 设计规范：Inter Variable 为全局主字体，中文回退系统黑体。
+const inter = Inter({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-inter',
+});
 
 // SSR安全的hooks
 const useSSRSafeState = (initialValue: any) => {
@@ -129,20 +137,23 @@ export default function App({ Component, pageProps }: AppProps) {
       <Head>
         <title>人生海海</title>
         <meta name="application-name" content="人生海海" />
+        <style>{`:root { --font-inter: ${inter.style.fontFamily}; }`}</style>
       </Head>
-      <PageLoader visible={routeLoading} />
-      <Component {...pageProps} />
-      <Toaster
-        position="top-right"
-        theme="dark"
-        toastOptions={{
-          style: {
-            background: '#151A24',
-            color: '#E8E4DA',
-            border: '1px solid #C9A15F',
-          },
-        }}
-      />
+      <div className={`${inter.variable} font-sans`}>
+        <PageLoader visible={routeLoading} />
+        <Component {...pageProps} />
+        <Toaster
+          position="top-right"
+          theme="dark"
+          toastOptions={{
+            style: {
+              background: '#0f1011',
+              color: '#d0d6e0',
+              border: '1px solid #23252a',
+            },
+          }}
+        />
+      </div>
     </ErrorBoundary>
   );
 }

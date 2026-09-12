@@ -32,7 +32,7 @@ export function normalizePlayText(text: string): string {
 
 function inline(text: string) {
   return text.split(/(\*\*[^*\n]+\*\*|__[^_\n]+__|`[^`\n]+`|\*[^*\n]+\*)/g).map((part, i) => {
-    if ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('__') && part.endsWith('__'))) return <strong key={i} className="font-bold text-paper">{part.slice(2, -2)}</strong>;
+    if ((part.startsWith('**') && part.endsWith('**')) || (part.startsWith('__') && part.endsWith('__'))) return <strong key={i} className="font-semibold text-paper">{part.slice(2, -2)}</strong>;
     if (part.startsWith('`') && part.endsWith('`')) return <code key={i} className="rounded bg-white/5 px-1">{part.slice(1, -1)}</code>;
     if (part.startsWith('*') && part.endsWith('*')) return <em key={i}>{part.slice(1, -1)}</em>;
     return <Fragment key={i}>{part}</Fragment>;
@@ -41,19 +41,19 @@ function inline(text: string) {
 
 export default function PlayText({ text }: { text: string }) {
   const lines = normalizePlayText(text).split('\n');
-  return <div className="min-w-0 break-words text-[15px] leading-8 [overflow-wrap:anywhere]">
+  return <div className="play-prose min-w-0 break-words [overflow-wrap:anywhere]">
     {lines.map((line, i) => {
       if (!line) return null;
-      if (readingHeading.test(line)) return <h3 key={i} className="mb-3 mt-6 text-xl font-bold leading-relaxed">{line}</h3>;
+      if (readingHeading.test(line)) return <h3 key={i} className="mb-3 mt-6 text-xl font-semibold leading-relaxed">{line}</h3>;
       const heading = line.match(/^(#{1,6})\s+(.+?)(?:\s+#+)?$/);
       if (heading) {
         const Heading = heading[1].length <= 2 ? 'h3' : 'h4';
-        return <Heading key={i} className={`mb-3 mt-6 font-bold leading-relaxed ${heading[1].length === 1 ? 'text-2xl' : heading[1].length === 2 ? 'text-xl' : 'text-lg'}`}>{inline(heading[2])}</Heading>;
+        return <Heading key={i} className={`mb-3 mt-6 font-semibold leading-relaxed ${heading[1].length === 1 ? 'text-2xl' : heading[1].length === 2 ? 'text-xl' : 'text-lg'}`}>{inline(heading[2])}</Heading>;
       }
       if (/^[-*_]{3,}$/.test(line)) return <hr key={i} className="my-5 border-line" />;
       const list = line.match(/^(?:[-*+]\s+|\d+[.)]\s+|\d+、\s*)(.*)$/);
-      if (list) return <p key={i} className="mb-2 pl-5 -indent-4"><span className="mr-2 text-brass">{line.match(/^\d+[.)、]/)?.[0] || '•'}</span>{inline(list[1])}</p>;
-      if (/^>\s?/.test(line)) return <blockquote key={i} className="my-3 border-l-2 border-brass/60 pl-4 text-mist">{inline(line.replace(/^>\s?/, ''))}</blockquote>;
+      if (list) return <p key={i} className="mb-2 pl-5 -indent-4"><span className="mr-2 text-faint">{line.match(/^\d+[.)、]/)?.[0] || '•'}</span>{inline(list[1])}</p>;
+      if (/^>\s?/.test(line)) return <blockquote key={i} className="my-3 border-l-2 border-line pl-4 text-mist">{inline(line.replace(/^>\s?/, ''))}</blockquote>;
       return <p key={i} className="mb-4 last:mb-0">{inline(line)}</p>;
     })}
   </div>;

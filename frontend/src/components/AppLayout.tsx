@@ -26,11 +26,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/play/records': '我的记录',
   '/play/package-preview': '开始新游戏',
   '/account': '个人信息',
-  '/game': '游戏',
   '/profile': '个人资料',
-  '/profile/game-history': '游戏历史',
   '/profile/change-password': '设置',
-  '/script-manager/create': '创建剧本',
   '/admin/source-bundles': '来源材料核验',
   '/admin/script-reviews': '剧本审核记录',
   '/admin/authoring-jobs': '编译与模型审核',
@@ -58,8 +55,8 @@ const mobileNavItems: NavItem[] = [
   { href: '/play/records', label: '我的记录', icon: History, requireAuth: true },
 ];
 
-const AppLayout: React.FC<AppLayoutProps> = ({ 
-  children, 
+const AppLayout: React.FC<AppLayoutProps> = ({
+  children,
   showSidebar = true,
   backgroundImage,
   isGamePage = false,
@@ -72,7 +69,7 @@ const AppLayout: React.FC<AppLayoutProps> = ({
   const [dockExpanded, setDockExpanded] = useState(false);
 
 
-  const filteredMobileNavItems = mobileNavItems.filter(item => 
+  const filteredMobileNavItems = mobileNavItems.filter(item =>
     !item.requireAuth || isAuthenticated
   );
 
@@ -81,12 +78,12 @@ const AppLayout: React.FC<AppLayoutProps> = ({
       {/* 背景层 */}
       <div className="fixed inset-0">
         {backgroundImage ? (
-          <div 
+          <div
             className="absolute inset-0 bg-cover bg-center bg-no-repeat"
             style={{ backgroundImage: `url(${backgroundImage})` }}
           />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-b from-[#0C0F14] via-ink to-[#11151D]" />
+          <div className="absolute inset-0 bg-ink" />
         )}
         <div className="absolute inset-0 bg-ink/40" />
       </div>
@@ -114,14 +111,14 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                 {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
               </Button>
             )}
-            
+
             {/* Logo */}
             {!isGamePage && (
-              <Link href="/" className={gameWorkspace ? 'inline-flex min-h-11 items-center rounded-lg border border-brass/50 bg-raised px-3 py-2 text-sm font-medium text-brass hover:text-paper' : 'font-dossier text-lg font-bold text-brass hover:text-paper transition-colors'}>
+              <Link href="/" className={gameWorkspace ? 'inline-flex min-h-11 items-center rounded-lg border border-line bg-raised px-3 py-2 text-sm font-medium text-mist hover:text-paper' : 'font-dossier text-lg font-semibold text-mist hover:text-paper transition-colors'}>
                 {gameWorkspace ? '← 返回首页' : '人生海海'}
               </Link>
             )}
-            
+
             {/* 游戏页面返回按钮 */}
             {isGamePage && (
               <Button
@@ -156,19 +153,19 @@ const AppLayout: React.FC<AppLayoutProps> = ({
       {showSidebar && !isGamePage && !gameWorkspace && <>
         {/* 遮罩层 */}
         {sidebarOpen && (
-          <div 
+          <div
             className="fixed inset-x-0 bottom-0 top-14 z-[55] bg-ink/60 md:hidden"
             onClick={() => setSidebarOpen(false)}
           />
         )}
-        
+
         {/* 移动端侧边栏 */}
         <div inert={!sidebarOpen} aria-label="手机导航" className={cn(
           "fixed top-14 left-0 z-[60] h-[calc(100vh-3.5rem)] w-64 bg-panel backdrop-blur-sm border-r border-line transform transition-transform duration-300 md:hidden",
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         )}>
             <div className="flex h-16 shrink-0 items-center px-6 border-b border-hairline">
-              <Link href="/" className="font-dossier text-lg font-bold text-brass hover:text-paper transition-colors">
+              <Link href="/" className="font-dossier text-lg font-semibold text-mist hover:text-paper transition-colors">
                 人生海海
               </Link>
             </div>
@@ -176,9 +173,9 @@ const AppLayout: React.FC<AppLayoutProps> = ({
               <div className="p-4 space-y-2 flex-1">
                 {filteredMobileNavItems.map((item) => {
                   const Icon = item.icon;
-                  const isActive = router.pathname === item.href || 
+                  const isActive = router.pathname === item.href ||
                     (item.href !== '/' && router.pathname.startsWith(item.href));
-                  
+
                   return (
                     <Link
                       key={item.href}
@@ -186,8 +183,8 @@ const AppLayout: React.FC<AppLayoutProps> = ({
                       onClick={() => setSidebarOpen(false)}
                       className={cn(
                         "flex items-center space-x-3 px-4 py-3 rounded-sm text-sm font-medium transition-all duration-200 w-full",
-                        isActive 
-                          ? "bg-brass/15 text-brass border border-brass/30" 
+                        isActive
+                          ? "bg-white/10 text-mist border border-line"
                           : "text-mist hover:text-paper hover:bg-raised/60"
                       )}
                     >

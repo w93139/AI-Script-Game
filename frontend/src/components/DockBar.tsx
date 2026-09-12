@@ -59,11 +59,11 @@ const DockBar: React.FC<DockBarProps> = ({ className, onExpandedChange }) => {
       {/* Logo 区域 */}
       <div className="flex h-20 items-center border-b border-line px-4 shrink-0">
         <Link href="/" className="flex items-center gap-3">
-          <div className="w-12 h-12 shrink-0 bg-brass/15 border border-brass/40 rounded-sm flex items-center justify-center hover:bg-brass/25 transition-all duration-200">
-            <span className="font-dossier text-paper font-bold text-lg">海</span>
+          <div className="w-12 h-12 shrink-0 bg-white/15 border border-line rounded-sm flex items-center justify-center hover:bg-white/25 transition-all duration-200">
+            <span className="font-dossier text-paper font-semibold text-lg">海</span>
           </div>
           <span className={cn(
-            "font-dossier text-paper font-bold text-base whitespace-nowrap transition-opacity duration-300",
+            "font-dossier text-paper font-semibold text-base whitespace-nowrap transition-opacity duration-300",
             expanded ? "opacity-100" : "opacity-0"
           )}>
             人生海海
@@ -85,7 +85,7 @@ const DockBar: React.FC<DockBarProps> = ({ className, onExpandedChange }) => {
                 "relative flex h-12 shrink-0 items-center rounded-sm transition-all duration-300",
                 expanded ? "w-full px-3 gap-3" : "w-12 mx-auto justify-center",
                 active
-                  ? "bg-brass/15 text-brass border border-brass/30"
+                  ? "bg-white/15 text-mist border border-line"
                   : "text-mist hover:text-paper hover:bg-raised/60"
               )}
             >
@@ -99,7 +99,7 @@ const DockBar: React.FC<DockBarProps> = ({ className, onExpandedChange }) => {
 
               {/* 活跃状态指示器 */}
               {active && (
-                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-brass rounded-full" />
+                <div className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-mist rounded-full" />
               )}
             </Link>
           );

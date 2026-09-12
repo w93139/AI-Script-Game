@@ -243,7 +243,7 @@ export default function AuthoringJobsPanel(props: AuthoringJobsPanelProps) {
   const queueDisabled = props.busy || props.loading || props.sourceLoading || !canQueueAuthoringJob(bundle, props.draft);
   return <main className="mx-auto min-w-0 max-w-6xl px-4 pb-16 pt-20 text-paper">
     <p className="text-xs tracking-widest text-brass">管理员 · 剧本准备</p>
-    <h1 className="mt-2 text-3xl font-bold">材料编译任务</h1>
+    <h1 className="mt-2 text-3xl font-semibold">材料编译任务</h1>
     <p className="mt-3 text-sm leading-6 text-mist">选择本次使用的文字材料，排队生成候选包与模型审核建议。所有产物仅管理员可见，仍需人工审核，尚未批准发布。</p>
     {props.error && <p role="alert" className="mt-5 rounded border border-red-400/50 bg-red-950/40 p-4 text-sm text-red-200">{props.error}</p>}
     {props.notice && <p role="status" className="mt-4 rounded border border-emerald-500/40 p-4 text-sm">{props.notice}</p>}

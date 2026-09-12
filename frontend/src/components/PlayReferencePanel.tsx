@@ -21,7 +21,7 @@ export interface PlayReferencePanelProps {
   toolbar?: boolean;
 }
 
-const buttonClass = 'rounded-md border border-line bg-panel px-3 py-2 text-sm text-paper hover:bg-raised focus-visible:outline-2 focus-visible:outline-brass disabled:opacity-40';
+const buttonClass = 'rounded-md border border-line bg-panel px-3 py-2 text-sm text-paper hover:bg-raised focus-visible:outline-2 focus-visible:outline-mist disabled:opacity-40';
 
 export default function PlayReferencePanel(props: PlayReferencePanelProps) {
   if (props.locked || !props.scope.trim()) return <div className={props.toolbar ? 'contents' : 'flex items-center gap-2'}>
@@ -65,7 +65,7 @@ function ScopedReferencePanel({ characterName, materials, rulesMaterials = [], m
         <Tabs.Root value={tab} onValueChange={setTab} className="mt-3 flex min-h-0 flex-1 flex-col overflow-hidden">
           <Tabs.List aria-label="随身资料内容" className="grid shrink-0 grid-cols-4 gap-1 border-b border-line pb-2">
             {([['tasks', '任务'], ['memories', '回忆'], ['materials', '角色资料'], ['rules', '规则']] as const).map(([value, label]) => <Tabs.Trigger
-              key={value} value={value} className="min-w-0 whitespace-nowrap rounded-md px-1 py-2 text-sm text-mist data-[state=active]:bg-raised data-[state=active]:text-paper focus-visible:outline-2 focus-visible:outline-brass">{label}</Tabs.Trigger>)}
+              key={value} value={value} className="min-w-0 whitespace-nowrap rounded-md px-1 py-2 text-sm text-mist data-[state=active]:bg-raised data-[state=active]:text-paper focus-visible:outline-2 focus-visible:outline-mist">{label}</Tabs.Trigger>)}
           </Tabs.List>
           <Tabs.Content value="tasks" className="min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain pt-3">
             {tasks.length ? tasks.map(section => <section key={section.id} className="min-w-0 rounded-md border border-line p-3"><PlayText text={section.text} /></section>)

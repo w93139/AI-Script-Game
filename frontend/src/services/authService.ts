@@ -4,11 +4,10 @@ import {
   PasswordChange,
   Token,
   UserResponse as User,
-  UserBrief,
   UserRegister,
   UserUpdate
 } from '@/client';
-import { GameHistory, PhoneLogin, SmsCodeResponse } from '@/types/auth';
+import { PhoneLogin, SmsCodeResponse } from '@/types/auth';
 import { config } from '@/stores/configStore';
 import { authReturnPath } from '@/lib/authReturnPath';
 
@@ -250,25 +249,6 @@ class AuthService {
       method: 'POST',
       body: JSON.stringify(passwordData),
     });
-  }
-
-  // 获取用户列表
-  async getUsers(skip: number = 0, limit: number = 20): Promise<UserBrief[]> {
-    return this.request<UserBrief[]>(`/api/auth/users?skip=${skip}&limit=${limit}`);
-  }
-
-  // 获取指定用户信息
-  async getUserById(userId: number): Promise<UserBrief> {
-    return this.request<UserBrief>(`/api/auth/users/${userId}`);
-  }
-
-  // 获取用户游戏历史
-  async getUserGameHistory(skip: number = 0, limit: number = 20): Promise<GameHistory[]> {
-  const raw = await this.request<any>(`/api/users/game-history?skip=${skip}&limit=${limit}`);
-  // 兼容：若后端返回 {success, data:{ items:[], ...}} 结构则解包
-  if (Array.isArray(raw)) return raw as GameHistory[];
-  if (raw?.data?.items && Array.isArray(raw.data.items)) return raw.data.items as GameHistory[];
-  return [];
   }
 
   // 检查是否已登录

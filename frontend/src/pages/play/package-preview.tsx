@@ -129,13 +129,13 @@ function OpeningPreview() {
   const inputClass = 'mt-2 w-full min-w-0 rounded border border-line bg-ink p-3 text-paper';
   return <main className={`opening-page mx-auto max-w-3xl px-4 pb-24 text-paper ${!authInvalid && !loading && preview ? 'pt-0' : 'pt-20 md:pt-12'}`}>
     {(!preview || loading || authInvalid) && <>
-    <p className="text-xs text-brass">选择剧本 · 进入故事</p>
-    <h1 className="mt-2 font-dossier text-3xl">选择你的故事</h1>
+    <p className="text-xs text-faint">选择剧本 · 进入故事</p>
+    <h1 className="mt-3 font-dossier text-3xl font-medium tracking-tight">选择你的故事</h1>
     <p className="mt-4 text-sm leading-6 text-mist">选择角色，阅读自己的开场资料，然后进入游戏。</p>
     </>}
     {loading && <p role="status" className="mt-6">正在读取……</p>}
     {error && (!preview || authInvalid) && <p role="alert" className="mt-6 rounded border border-red-500/40 p-4 text-red-200">{error}</p>}
-    {!authInvalid && !loading && !preview && !requestedSession && <section className="mt-6 space-y-5 rounded border border-line bg-panel p-5" aria-label="选择开场角色">
+    {!authInvalid && !loading && !preview && !requestedSession && <section className="mt-6 space-y-5 rounded-xl border border-line bg-panel p-5" aria-label="选择开场角色">
       <label className="block text-sm">剧本<select className={inputClass} value={releaseId} disabled={busy} onChange={event => { setReleaseId(event.target.value); setCharacterId(''); }}>
         <option value="">请选择剧本</option>{releases.map(item => <option key={item.id} value={item.id}>{item.title}</option>)}
       </select></label>
@@ -143,24 +143,24 @@ function OpeningPreview() {
         <option value="">请选择角色</option>{release?.characters.map(item => <option key={item.id} value={item.id}>{item.name}</option>)}
       </select></label>
       <p className="text-xs leading-5 text-mist">选好角色后，先阅读你的开场资料。游戏会保留本次选择和之后的进度。</p>
-      <button className="rounded bg-brass px-4 py-3 text-ink disabled:opacity-40" disabled={busy || !release || !characterId} onClick={create}>{busy ? '正在打开……' : '阅读开场'}</button>
+      <button className="player-action player-action-primary disabled:opacity-40" disabled={busy || !release || !characterId} onClick={create}>{busy ? '正在打开……' : '阅读开场'}</button>
       {!releases.length && <p className="text-sm text-mist">暂时没有可选择的剧本。</p>}
     </section>}
     {!authInvalid && !loading && preview && <OpeningReading preview={preview} onStart={start} starting={busy} startLabel={startLabel} startError={error} />}
-    <div className="mt-8 flex justify-center"><Link href="/" className="min-h-11 rounded-lg border border-brass/40 px-5 py-3 text-sm text-brass hover:bg-raised">返回首页</Link></div>
+    <div className="mt-8 flex justify-center"><Link href="/" className="min-h-11 rounded-md border border-line px-5 py-3 text-sm text-mist hover:bg-raised">返回首页</Link></div>
   </main>;
 }
 
 export function OpeningReading({ preview, onStart, starting = false, startLabel = '开始游戏', startError = '' }: { preview: PackagePreview; onStart?: () => void; starting?: boolean; startLabel?: string; startError?: string }) {
   const characterName = preview.characters.find(item => item.id === preview.selected_character_id)?.name || '我的角色';
-  return <><header aria-label="开场顶部导航" className="opening-topbar sticky top-14 z-30 rounded-b-xl border border-line bg-panel p-3 shadow-lg md:top-0 sm:p-4">
+  return <><header aria-label="开场顶部导航" className="opening-topbar sticky top-14 z-30 rounded-b-xl border border-line bg-panel p-3 md:top-0 sm:p-4">
       <div className="flex items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs text-brass">阅读开场</p>
+          <p className="text-xs text-mist">阅读开场</p>
           <h1 className="mt-1 break-words font-dossier text-xl font-semibold sm:text-2xl">{preview.script.title}</h1>
           <p className="mt-1 text-sm text-mist">你的角色：{characterName}</p>
         </div>
-        <button type="button" onClick={onStart} disabled={!onStart || starting} className="opening-start group inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-lg bg-brass px-4 py-3 text-sm font-semibold text-ink disabled:opacity-50">
+        <button type="button" onClick={onStart} disabled={!onStart || starting} className="opening-start group inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-md bg-brass px-4 py-3 text-sm font-semibold text-ink disabled:opacity-50">
           {starting ? '正在进入…' : startLabel}<span aria-hidden="true" className="opening-start-arrow">→</span>
         </button>
       </div>
@@ -168,11 +168,11 @@ export function OpeningReading({ preview, onStart, starting = false, startLabel 
         <details className="shrink-0" onKeyDown={event => {
           if (event.key === 'Escape') { event.preventDefault(); event.currentTarget.open = false; event.currentTarget.querySelector('summary')?.focus({ preventScroll: true }); }
         }}>
-          <summary className="min-h-11 cursor-pointer rounded-md px-2 py-3 text-sm text-brass">故事介绍</summary>
-          <div className="absolute left-0 right-0 top-full mt-1 max-h-[45dvh] overflow-y-auto overscroll-contain rounded-xl border border-brass/40 bg-panel p-4 shadow-xl">
+          <summary className="min-h-11 cursor-pointer rounded-md px-2 py-3 text-sm text-mist">故事介绍</summary>
+          <div className="absolute left-0 right-0 top-full mt-1 max-h-[45dvh] overflow-y-auto overscroll-contain rounded-xl border border-line bg-panel p-4 shadow-xl">
             <h2 className="font-semibold">故事介绍</h2><PlayText text={preview.introduction.text} />
             <p className="mt-3 text-sm leading-7 text-mist">先阅读公开规则和自己的开场资料。准备好后，点击“开始游戏”进入讨论与调查；已经开始过的游戏会继续原进度。</p>
-            <button type="button" className="mt-3 block min-h-11 rounded border border-line px-3 py-2 text-sm text-brass" onClick={event => {
+            <button type="button" className="mt-3 block min-h-11 rounded border border-line px-3 py-2 text-sm text-mist" onClick={event => {
               const details = event.currentTarget.closest('details');
               if (details) { details.open = false; details.querySelector('summary')?.focus({ preventScroll: true }); }
             }}>收起说明</button>

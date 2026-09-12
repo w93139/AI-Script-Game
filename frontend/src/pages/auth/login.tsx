@@ -60,7 +60,7 @@ export default function LoginPage() {
   return (
     <ProtectedRoute requireAuth={false}>
       <div className="min-h-screen flex">
-        <div className="hidden md:flex w-[45%] relative flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-ink to-[#151A24] border-r border-hairline">
+        <div className="hidden md:flex w-[45%] relative flex-col items-center justify-center overflow-hidden bg-gradient-to-b from-ink to-[#0f1011] border-r border-hairline">
           <StarField />
           <div className="relative z-10 flex flex-col items-center text-center px-12 gap-6">
             <div className="h-16 w-16 rounded-sm bg-brass/10 border border-brass/40 flex items-center justify-center"><Swords className="h-8 w-8 text-brass" /></div>

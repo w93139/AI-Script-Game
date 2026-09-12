@@ -73,7 +73,7 @@ export default function ScriptReviewPanel(props: ScriptReviewPanelProps) {
   const submitDisabled = locked || !review || !selectedBundle || !props.reportText.trim();
   return <main className="mx-auto max-w-6xl px-4 pb-16 pt-20 text-paper">
     <p className="text-xs tracking-widest text-brass">管理员 · 剧本准备</p>
-    <h1 className="mt-2 text-3xl font-bold">剧本审核记录</h1>
+    <h1 className="mt-2 text-3xl font-semibold">剧本审核记录</h1>
     <p className="mt-3 text-sm leading-6 text-mist">记录人工核对发现的问题，并逐项保留处理说明。审核内容仅管理员可见；人工审核记录未运行自动 Audit，也未批准发布，最终确认与发布需在下方单独操作。</p>
     {props.error && <p role="alert" className="mt-5 rounded border border-red-400/50 bg-red-950/40 p-4 text-red-200">{props.error}</p>}
     {props.notice && <p role="status" className="mt-4 rounded border border-emerald-500/40 p-4 text-sm">{props.notice}</p>}
