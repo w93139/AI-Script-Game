@@ -490,7 +490,7 @@ export default function PackagePlayPanel(props: PackagePlayPanelProps) {
       <div className="play-header-row flex min-w-0 items-center justify-between gap-2">
         <Link href="/" className="play-home-link hidden min-h-11 shrink-0 items-center gap-2 rounded-md border border-line bg-raised px-3 py-2 text-sm text-mist md:inline-flex"><Home aria-hidden="true" className="h-4 w-4" />返回首页</Link>
         <div className="play-header-title min-w-0">
-          <h2 className="truncate font-dossier text-base font-semibold sm:text-lg">{view.script.title}<span className="ml-2 font-sans text-xs font-normal text-mist">{actor?.name || '固定角色'}</span></h2>
+          <h2 title={view.script.title} className="truncate font-dossier text-base font-semibold sm:text-lg">{view.script.title}<span className="ml-2 font-sans text-xs font-normal text-mist">{actor?.name || '固定角色'}</span></h2>
           <p aria-label="当前阶段" className="mt-1 truncate text-xs leading-5 text-mist">{view.round_workspace?.phases.find(phase => phase.phase_id === view.current_phase.id)?.title || (view.full_game ? (currentPage === 'finale' ? '结局 · 答卷' : currentPage === 'investigation' ? '调查阶段' : '阅读材料') : view.current_phase.title)}</p>
         </div>
         <div className="play-top-actions flex shrink-0 items-center justify-end gap-2">{guided && <PlayHostHints key={`host-hints:${pageScope}`} view={view} locked={Boolean(locked)} error={props.error} onGuided={props.onGuided} />}
