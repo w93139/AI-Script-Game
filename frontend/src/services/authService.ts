@@ -62,7 +62,9 @@ class AuthService {
         this.removeToken();
         // Preserve the current game when an existing login expires.
         if (returnPath !== null) {
-          window.location.href = '/auth/login?returnUrl=' + encodeURIComponent(returnPath);
+          // 强制跳转登录页：登录已过期，替换当前历史记录而不是新增一条，
+          // 这样用户按后退不会回到已失效的页面。
+          window.location.replace('/auth/login?returnUrl=' + encodeURIComponent(returnPath));
         }
       }
 

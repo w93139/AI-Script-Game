@@ -54,6 +54,8 @@ async def get_game_detail(session_id: str, request: Request, svc: GameHistorySer
     try:
         resp = await svc.get_game_detail(session_id, user.id)
         return resp.dict()
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="无权限访问此会话")
     except ValueError:
         raise HTTPException(status_code=404, detail="会话不存在")
 
@@ -69,7 +71,12 @@ async def get_game_events(session_id: str, request: Request,
     user = get_current_active_user_from_request(request)
     filters = EventFilters(event_type=event_type, character_name=character_name, start_time=start_time, end_time=end_time)
     pagination = PaginationParams(page=page, size=size)
-    resp = await svc.get_game_events(session_id, user.id, filters, pagination)
+    try:
+        resp = await svc.get_game_events(session_id, user.id, filters, pagination)
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="无权限访问此会话")
+    except ValueError:
+        raise HTTPException(status_code=404, detail="会话不存在")
     return {"success": True, "data": {"items": [i.dict() for i in resp.items], "total": resp.total, "page": resp.page, "size": resp.size}}
 
 @router.post("/{session_id}/resume")
@@ -78,5 +85,7 @@ async def resume_game(session_id: str, request: Request, svc: GameResumeService 
     try:
         resp = await svc.resume_game(session_id, user.id)
         return {"success": True, "data": resp.dict()}
+    except PermissionError:
+        raise HTTPException(status_code=403, detail="无权限恢复此会话")
     except ValueError:
         raise HTTPException(status_code=404, detail="会话不存在")

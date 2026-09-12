@@ -8,6 +8,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Bookmark, Clock, Play, Share2, Star, Users } from 'lucide-react';
+import { useRouter } from 'next/router';
 import { useCallback, useEffect, useState } from 'react';
 
 interface ScriptDetailDrawerProps {
@@ -17,6 +18,7 @@ interface ScriptDetailDrawerProps {
 }
 
 const ScriptDetailDrawer: React.FC<ScriptDetailDrawerProps> = ({ script, isOpen, onClose }) => {
+  const router = useRouter();
   const [scriptDetails, setScriptDetails] = useState<Script_Output | null>(null);
   const [characters, setCharacters] = useState<ScriptCharacter[]>([]);
   const [gamePhases] = useState<any[]>([]);
@@ -403,7 +405,7 @@ const ScriptDetailDrawer: React.FC<ScriptDetailDrawerProps> = ({ script, isOpen,
                 className="flex-1 h-12 border border-brass/40 bg-brass/10 text-brass hover:bg-brass/20 font-medium"
                 onClick={() => {
                   onClose();
-                  window.location.href = `/game?script_id=${displayScript.id}`;
+                  router.push(`/game?script_id=${displayScript.id}`);
                 }}
               >
                 <Play className="h-4 w-4 mr-2" />

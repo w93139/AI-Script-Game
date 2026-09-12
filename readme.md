@@ -85,12 +85,12 @@ cd frontend && npx next dev -p 3001                # 前端 127.0.0.1:3001
 
 <div style="display: flex; flex-direction: column; gap: 20px;">
   <div style="display: flex; justify-content: space-between; gap: 20px;">
-    <img src="screenshot/game_room.png" alt="游戏房间界面" style="width: 48%;">
-    <img src="screenshot/scripts_center.png" alt="剧本中心界面" style="width: 48%;">
+    <img src="screenshot/game_room.jpg" alt="游戏房间界面" style="width: 48%;">
+    <img src="screenshot/scripts_center.jpg" alt="剧本中心界面" style="width: 48%;">
   </div>
   <div style="display: flex; justify-content: space-between; gap: 20px;">
-    <img src="screenshot/edit_script.png" alt="剧本编辑界面" style="width: 48%;">
-    <img src="screenshot/script_create.png" alt="剧本创建界面" style="width: 48%;">
+    <img src="screenshot/edit_script.jpg" alt="剧本编辑界面" style="width: 48%;">
+    <img src="screenshot/script_create.jpg" alt="剧本创建界面" style="width: 48%;">
   </div>
 </div>
 

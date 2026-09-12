@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState, useRef, useEffect } from 'react';
 // Card components removed - using div layout for better control
 import { Button } from '@/components/ui/button';
@@ -353,6 +352,9 @@ const ChatEditor: React.FC<ChatEditorProps> = ({ onScriptUpdate }) => {
         processingTimeoutRef.current = null;
       }
     };
+    // armProcessingTimeout / clearProcessingMessage 只依赖稳定的 setter 与 ref，
+    // 若加入依赖数组会导致每次渲染重新订阅/退订事件，反而引入竞态。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [onScriptUpdate]);
 
   const handleSendMessage = () => {

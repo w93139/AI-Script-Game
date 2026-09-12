@@ -75,7 +75,6 @@ export function PlayerLibrary({ recordsOnly = false }: { recordsOnly?: boolean }
     }
     return () => { guard.current?.dispose(); active.forEach(controller => controller.abort()); pending.current = false; };
     // A retry starts a fresh request set; identity changes are handled by the parent key and token guard.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recordsOnly, retry]);
   if (invalid) return <div className={card}><p role="alert">登录状态已变化，请刷新首页后继续。</p><button className={`mt-4 ${secondary}`} onClick={() => window.location.reload()}>刷新首页</button></div>;
   return <>

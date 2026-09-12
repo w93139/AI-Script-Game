@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { authService } from '@/services/authService';
+import packagePlayService from '@/services/packagePlayService';
 import { useAuthStore } from '@/stores/authStore';
 import { UserUpdate } from '@/types/auth';
 import { Camera, ChevronRight, Edit3, History, Lock, Mail, Save, Smile, User, X } from 'lucide-react';
@@ -36,11 +36,12 @@ const ProfilePage: React.FC = () => {
     // 移除getCurrentUser调用，因为ProtectedRoute已经处理了认证状态
   }, [isAuthenticated, router]);
 
-  // 加载游戏历史场次
+  // 加载游戏历史场次（单真人玩法记录走 /api/fusion/package-play-library，
+  // 旧的全 AI 模拟器历史接口已被管理员权限锁定，普通玩家不能调用）。
   useEffect(() => {
     if (isAuthenticated) {
-      authService.getUserGameHistory(0, 200).then(history => {
-        setGameHistoryCount(history.length);
+      packagePlayService.library(0, 50).then(lib => {
+        setGameHistoryCount(lib.items.length);
       }).catch(() => {});
     }
   }, [isAuthenticated]);
@@ -330,7 +331,7 @@ const ProfilePage: React.FC = () => {
                       <ChevronRight className="h-4 w-4 shrink-0 text-faint" />
                     </button>
                     <button
-                      onClick={() => router.push('/profile/game-history')}
+                      onClick={() => router.push('/play/records')}
                       className="flex w-full items-center gap-4 px-4 py-4 text-left transition-colors hover:bg-raised/60"
                     >
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-sm bg-brass/10">

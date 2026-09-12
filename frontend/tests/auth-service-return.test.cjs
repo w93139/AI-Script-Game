@@ -18,6 +18,7 @@ function expiredSession(url) {
   const location = {
     get href() { return current.href; },
     set href(value) { current = new URL(value, current); },
+    replace(value) { current = new URL(value, current); },
     get pathname() { return current.pathname; },
     get search() { return current.search; },
     get hash() { return current.hash; },

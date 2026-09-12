@@ -1,4 +1,5 @@
 """游戏历史与回放服务实现"""
+import os
 from typing import List
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_ , desc
@@ -26,6 +27,26 @@ class GameHistoryService:
             self.db.query(GameSession)
             .filter(GameSession.host_user_id == user_id)
         )
+
+    def _require_session_access(self, session: GameSession, user_id: int) -> None:
+        """校验用户是否为房主或该局参与者，否则抛 PermissionError。
+
+        历史回放会暴露会话内的事件与角色信息，必须与列表接口同等的权限边界：
+        只允许房主和真正加入该局的人类玩家访问，其余一律拒绝。
+        """
+        if session.host_user_id == user_id:
+            return
+        participant = (
+            self.db.query(UserGameParticipant)
+            .filter(
+                UserGameParticipant.session_id == session.session_id,
+                UserGameParticipant.user_id == user_id,
+            )
+            .first()
+        )
+        if participant is not None:
+            return
+        raise PermissionError("无权限访问此会话")
 
     async def get_user_game_history(self, user_id: int, filters: GameHistoryFilters, pagination: PaginationParams) -> PaginatedResponse:
         q = self._base_session_query(user_id)
@@ -75,9 +96,7 @@ class GameHistoryService:
         s = self.session_repo.get_by_session_id(session_id)
         if not s:
             raise ValueError("会话不存在")
-        if s.host_user_id != user_id:
-            # TODO: also allow participants
-            pass
+        self._require_session_access(s, user_id)
         # statistics
         q_events = self.db.query(GameEventDBModel).filter(GameEventDBModel.session_id==session_id)
         total_events = q_events.count()
@@ -122,6 +141,10 @@ class GameHistoryService:
         return GameDetailResponse(data=data)
 
     async def get_game_events(self, session_id: str, user_id: int, filters: EventFilters, pagination: PaginationParams):
+        s = self.session_repo.get_by_session_id(session_id)
+        if not s:
+            raise ValueError("会话不存在")
+        self._require_session_access(s, user_id)
         q = self.db.query(GameEventDBModel).filter(GameEventDBModel.session_id==session_id)
         if filters.event_type:
             q = q.filter(GameEventDBModel.event_type==filters.event_type)
@@ -157,10 +180,17 @@ class GameResumeService:
         s = self.session_repo.get_by_session_id(session_id)
         if not s:
             raise ValueError("会话不存在")
-        # 权限检查: 房主或参与者
-        # 这里简单放行房主
         if s.host_user_id != user_id:
-            pass
+            participant = (
+                self.db.query(UserGameParticipant)
+                .filter(
+                    UserGameParticipant.session_id == s.session_id,
+                    UserGameParticipant.user_id == user_id,
+                )
+                .first()
+            )
+            if participant is None:
+                raise PermissionError("无权限恢复此会话")
         # 如果是暂停则恢复
         if hasattr(s.status, 'value'):
             status_val = s.status.value
@@ -169,7 +199,10 @@ class GameResumeService:
         if status_val == GameSessionStatus.PAUSED.value:
             s.status = GameSessionStatus.STARTED
         self.db.flush()
-        # 构造websocket URL (假设路径 /ws)
-        websocket_url = f"ws://localhost:8000/ws?script_id={s.script_id}"
+        # 构造 websocket URL：端口与后端 HTTP 服务保持一致，不再硬编码 8000。
+        # 这里返回的是遗留全 AI 模拟器的回放地址，实际连接由前端 websocketStore 完成。
+        backend_host = os.getenv("HOST", "127.0.0.1")
+        backend_port = os.getenv("PORT", "8010")
+        websocket_url = f"ws://{backend_host}:{backend_port}/ws?script_id={s.script_id}"
         current_state = {"status": status_val, "script_id": s.script_id}
         return ResumeGameResponse(session_id=session_id, websocket_url=websocket_url, current_state=current_state)

@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { authService } from '@/services/authService';
 import type { GenEvent, GenerationStatus } from '@/types/scriptGeneration';
 import { useEffect } from 'react';

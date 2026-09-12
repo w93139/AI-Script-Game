@@ -215,7 +215,7 @@ const ScriptCard: React.FC<ScriptCardProps> = ({ script, onDetailClick, onFavori
                     className="h-7 px-2 bg-brass/15 border border-brass/40 text-brass hover:bg-brass/25 text-xs"
                     onClick={(e) => {
                       e.stopPropagation();
-                      window.location.href = `/game?script_id=${script.id}`;
+                      router.push(`/game?script_id=${script.id}`);
                     }}
                   >
                     <Play className="h-3 w-3 mr-1" />

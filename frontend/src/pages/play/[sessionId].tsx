@@ -111,7 +111,7 @@ export default function FusionRoom() {
         <div className="mx-auto flex max-w-6xl items-end gap-2">
           <Button variant="outline" className="border-line" onClick={() => setPanel(panel === 'role' ? null : 'role')}><LockKeyhole size={17}/><span className="ml-1 hidden sm:inline">私本</span></Button>
           <Button variant="outline" className="border-line" onClick={() => setPanel(panel === 'evidence' ? null : 'evidence')}><Search size={17}/><span className="ml-1 hidden sm:inline">证据</span></Button>
-          {canTalk && <><Textarea value={input} onChange={event => setInput(event.target.value)} className="max-h-24 min-h-10 resize-none border-line bg-panel" placeholder={target ? '向选中的角色提问…' : '公开发言…'}/><Button disabled={busy || !input.trim()} className="bg-brass text-ink" onClick={() => { const value = input; setInput(''); target ? act('ask_question', { target_character_id: target, content: value }) : act('send_message', { content: value }); }}><Send size={17}/></Button></>}
+          {canTalk && <><Textarea value={input} onChange={event => setInput(event.target.value)} className="max-h-24 min-h-10 resize-none border-line bg-panel" placeholder={target ? '向选中的角色提问…' : '公开发言…'}/><Button disabled={busy || !input.trim()} className="bg-brass text-ink" onClick={() => { const value = input; setInput(''); if (target) { act('ask_question', { target_character_id: target, content: value }); } else { act('send_message', { content: value }); } }}><Send size={17}/></Button></>}
           {canAdvance && <Button disabled={busy} onClick={() => act('advance_phase')} className="ml-auto bg-brass text-ink">下一阶段<ChevronRight size={17}/></Button>}
         </div>
       </div>

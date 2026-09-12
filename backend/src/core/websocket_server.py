@@ -696,9 +696,10 @@ class GameModeHandler:
                 except Exception as e:
                     logger.error(f"[GAME] 重置前结束游戏会话时出错: {e}, 会话={session_id}")
                     try:
-                        db_session.rollback()
-                        db_session.close()
-                    except:
+                        if 'db_session' in locals():
+                            db_session.rollback()
+                            db_session.close()
+                    except Exception:
                         pass
             
             session.is_game_running = False
