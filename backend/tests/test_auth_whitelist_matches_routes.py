@@ -34,8 +34,6 @@ def _all_registered_routes() -> list[tuple[str, frozenset[str]]]:
     from src.core.server import app
     from src.api.routes.character_routes import router as character_router
     from src.api.routes.evidence_routes import router as evidence_router
-    from src.api.routes.game_history_routes import router as game_history_router
-    from src.api.routes.game_routes import router as game_router
     from src.api.routes.image_generation_routes import router as image_router
     from src.api.routes.location_routes import router as location_router
     from src.api.routes.script_editor_routes import router as script_editor_router
@@ -59,7 +57,7 @@ def _all_registered_routes() -> list[tuple[str, frozenset[str]]]:
     conditional_routers = (
         tts_router, image_router,                       # ENABLE_MEDIA_FEATURES
         script_router, script_editor_router, evidence_router,
-        character_router, location_router, game_router, game_history_router,  # ENABLE_LEGACY_ADMIN
+        character_router, location_router,               # ENABLE_LEGACY_ADMIN
     )
     for router in conditional_routers:
         for route in router.routes:
@@ -175,8 +173,6 @@ LEGACY_PREFIXES = (
     "/api/evidence",
     "/api/characters",
     "/api/locations",
-    "/api/game/",
-    "/api/users/game-history",
 )
 
 

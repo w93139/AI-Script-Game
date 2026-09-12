@@ -100,18 +100,7 @@ EDITOR_PATHS = [
     "/api/scripts/search-extra",
 ]
 
-LEGACY_DEBUG_PATHS = [
-    "/api/users/game-history",
-    "/api/users/game-history/",
-    "/api/users/game-history/game-7",
-    "/api/users/game-history/game-7/events",
-    "/api/users/game-history/game-7/resume",
-    "/api/game",
-    "/api/game/status",
-    "/api/game/start",
-    "/api/game/reset",
-    "/api/game/sessions",
-]
+LEGACY_DEBUG_PATHS = []
 
 
 @pytest.mark.parametrize("path", EDITOR_PATHS + LEGACY_DEBUG_PATHS)

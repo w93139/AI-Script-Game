@@ -376,7 +376,6 @@ def configure_services() -> DependencyContainer:
     from ..db.repositories.background_story_repository import BackgroundStoryRepository
     from ..db.repositories.game_phase_repository import GamePhaseRepository
     from ..db.repositories.game_session_repository import GameSessionRepository, GameEventRepository
-    from ..services.game_history_service import GameHistoryService, GameResumeService
     from ..services.script_editor_service import ScriptEditorService
     from ..services.llm_service import (
         LLMService, BaseLLMService, _get_or_create_llm_service,
@@ -392,8 +391,6 @@ def configure_services() -> DependencyContainer:
     container.register_scoped(GamePhaseRepository)
     container.register_scoped(GameSessionRepository)
     container.register_scoped(GameEventRepository)
-    container.register_scoped(GameHistoryService)
-    container.register_scoped(GameResumeService)
 
     # 注册服务（作用域）
     container.register_scoped(ScriptEditorService)

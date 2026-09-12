@@ -88,20 +88,14 @@ class UnifiedAuthMiddleware(BaseHTTPMiddleware):
             # never exempt from administrator authorization.
             AuthRule(r"^/api/(?:scripts|characters|evidence|locations|script-editor)(?:/|$)", AuthLevel.ADMIN),
 
-            # Legacy simulator/history expose omniscient state and lack a
-            # per-character event projection. Keep them as administrator debug
-            # tools; player state/replay uses the scoped /api/fusion endpoints.
-            AuthRule(r"^/api/users/game-history(?:/|$)", AuthLevel.ADMIN),
-            AuthRule(r"^/api/game(?:/|$)", AuthLevel.ADMIN),
-            
+            # 遗留的全 AI 模拟器与全知对局历史已删除（前端入口同步移除），
+            # 对应的 /api/game 与 /api/users/game-history 规则一并移除。
+
             # 需要认证的用户相关路径
             AuthRule(r"^/api/auth/me", AuthLevel.REQUIRED),
             AuthRule(r"^/api/auth/logout", AuthLevel.REQUIRED),
             AuthRule(r"^/api/auth/change-password", AuthLevel.REQUIRED),
-            
-            # 需要认证的用户功能
-            AuthRule(r"^/api/users/.*", AuthLevel.REQUIRED),
-            
+
             # 需要认证的文件上传
             AuthRule(r"^/api/files/upload", AuthLevel.REQUIRED, ["POST"]),
             

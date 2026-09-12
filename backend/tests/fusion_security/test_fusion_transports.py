@@ -117,32 +117,6 @@ def test_ws_rejects_another_users_session_before_accepting(game):
     assert socket.sent == []
 
 
-@pytest.mark.parametrize("admin", [False, True])
-def test_legacy_whole_script_ws_is_admin_only(admin):
-    registered = []
-    closed = []
-    identity = SimpleNamespace(id=123, is_active=True, is_admin=admin)
-
-    async def register(*args):
-        registered.append(args)
-
-    async def unregister(*args):
-        return None
-
-    namespace = {
-        "get_db_session": lambda: iter([SimpleNamespace(close=lambda: closed.append(True))]),
-        "AuthService": SimpleNamespace(get_user_from_token=lambda *_: identity),
-        "game_server": SimpleNamespace(register_client=register, unregister_client=unregister),
-        "WebSocketDisconnect": WebSocketDisconnect,
-    }
-    handler = load_handlers("src/core/server.py", ["websocket_endpoint"], namespace)["websocket_endpoint"]
-    socket = FakeSocket()
-    asyncio.run(handler(socket, 7, "fake-token"))
-    assert bool(registered) is admin and closed == [True]
-    if not admin:
-        assert socket.closed[0] == 1008
-
-
 def test_rest_action_broadcasts_filtered_events_to_other_same_owner_devices(game):
     games, _, user, _, _, session = game
     append_canaries(game)

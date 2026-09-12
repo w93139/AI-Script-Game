@@ -5,7 +5,6 @@ from typing import List, Dict, Any, Optional
 import json
 import logging
 
-from ...core.websocket_server import game_server
 from ...services import TTSService
 from ...services.tts_service import get_tts_service
 from ...services.tts_voices import fetch_voices_payload

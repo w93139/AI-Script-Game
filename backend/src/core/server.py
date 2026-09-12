@@ -17,7 +17,6 @@ from src.core.environment import load_project_environment
 load_project_environment()
 
 from src.core.security_preflight import is_production
-from src.core.websocket_server import game_server
 from src.core.startup import initialize_application
 from src.services.auth_service import AuthService
 from src.db.session import db_manager
@@ -30,9 +29,6 @@ from src.api.routes.evidence_routes import router as evidence_router
 from src.api.routes.character_routes import router as character_router
 from src.api.routes.location_routes import router as location_router
 from src.api.routes.asset_routes import router as asset_router
-# 导入游戏管理API路由
-from src.api.routes.game_routes import router as game_router
-from src.api.routes.game_history_routes import router as game_history_router
 # 导入文件管理API路由
 from src.api.routes.file_routes import router as file_router
 # 导入TTS API路由
@@ -207,9 +203,7 @@ if ENABLE_LEGACY_ADMIN:
     app.include_router(evidence_router)
     app.include_router(character_router)
     app.include_router(location_router)
-    # 遗留的全 AI 模拟器与全知对局历史
-    app.include_router(game_router)
-    app.include_router(game_history_router)
+    # 遗留的全 AI 模拟器与全知对局历史已删除（前端入口已同步移除）。
     print("遗留管理接口已注册（ENABLE_LEGACY_ADMIN=true）")
 else:
     print("遗留管理接口未注册（ENABLE_LEGACY_ADMIN=false）")
@@ -289,58 +283,6 @@ async def fusion_websocket(websocket: WebSocket, session_id: str, token: str):
     finally:
         fusion_connections.disconnect(session_id, websocket)
         db.close()
-
-@app.websocket("/api/ws")
-async def websocket_endpoint(websocket: WebSocket, script_id: int = 1, token: str = None):
-    """WebSocket端点 - 支持token认证，基于用户身份自动管理会话"""
-    import logging
-    
-    logger = logging.getLogger(__name__)
-    await websocket.accept()
-    
-    # 通过token获取当前用户（复用 AuthService 统一验证入口）
-    current_user = None
-    if token:
-        try:
-            # 获取数据库会话
-            db_gen = get_db_session()
-            db = next(db_gen)
-
-            try:
-                # 验证令牌并获取用户
-                current_user = AuthService.get_user_from_token(db, token)
-
-                if current_user and not getattr(current_user, 'is_active', False):
-                    current_user = None
-            finally:
-                db.close()
-
-        except Exception as e:
-            logger.error(f"WebSocket token验证失败: {e}")
-            await websocket.close(code=1008, reason="Invalid token")
-            return
-    
-    if not current_user:
-        logger.warning("WebSocket连接缺少有效的用户认证")
-        await websocket.close(code=1008, reason="Authentication required")
-        return
-
-    # 旧 WS 同时暴露全本编辑、全知模拟及完整广播，仅管理员可进入。
-    # 单真人玩家使用 /api/fusion/ws/{session_id} 的角色过滤通道。
-    if not getattr(current_user, 'is_admin', False):
-        await websocket.close(code=1008, reason="Administrator access required")
-        return
-    
-    # 使用验证后的用户ID注册客户端
-    user_id = getattr(current_user, 'id', None)
-    await game_server.register_client(websocket, script_id, user_id)
-    
-    try:
-        while True:
-            data = await websocket.receive_text()
-            await game_server.handle_client_message(websocket, data)
-    except WebSocketDisconnect:
-        await game_server.unregister_client(websocket)
 
 # create_response函数已迁移到各自的路由文件中
 
