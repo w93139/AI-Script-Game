@@ -3,7 +3,7 @@
 /* tslint:disable */
 /* eslint-disable */
 /**
- * 生成剧本内容请求
+ * 根据剧本背景生成角色和证据的请求模型
  */
 export type GenerateScriptContentRequest = {
     script_id: number;

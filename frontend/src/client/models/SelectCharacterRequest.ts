@@ -2,11 +2,8 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-/**
- * 删除失败的会话项
- */
-export type GameSessionDeleteFailedItem = {
-    session_id: string;
-    error: string;
+export type SelectCharacterRequest = {
+    character_id: number;
+    idempotency_key: string;
 };
 

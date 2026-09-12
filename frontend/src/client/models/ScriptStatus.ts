@@ -7,6 +7,7 @@
  */
 export enum ScriptStatus {
     DRAFT = 'DRAFT',
+    REVIEW = 'REVIEW',
     PUBLISHED = 'PUBLISHED',
     ARCHIVED = 'ARCHIVED',
 }

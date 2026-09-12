@@ -6,7 +6,7 @@ import type { APIResponse_BatchEditResponse_ } from '../models/APIResponse_Batch
 import type { APIResponse_dict_ } from '../models/APIResponse_dict_';
 import type { APIResponse_Dict_str__Any__ } from '../models/APIResponse_Dict_str__Any__';
 import type { APIResponse_EditResultResponse_ } from '../models/APIResponse_EditResultResponse_';
-import type { APIResponse_list_ScriptCharacter__ } from '../models/APIResponse_List_ScriptCharacter__';
+import type { APIResponse_list_ScriptCharacter__ } from '../models/APIResponse_list_ScriptCharacter__';
 import type { APIResponse_ParsedInstructionsResponse_ } from '../models/APIResponse_ParsedInstructionsResponse_';
 import type { APIResponse_ScriptCharacter_ } from '../models/APIResponse_ScriptCharacter_';
 import type { APIResponse_str_ } from '../models/APIResponse_str_';
@@ -15,19 +15,22 @@ import type { Body_upload_file_api_files_upload_post } from '../models/Body_uplo
 import type { CharacterCreateRequest } from '../models/CharacterCreateRequest';
 import type { CharacterPromptRequest } from '../models/CharacterPromptRequest';
 import type { CharacterUpdateRequest } from '../models/CharacterUpdateRequest';
+import type { CreateFusionSessionRequest } from '../models/CreateFusionSessionRequest';
 import type { EvidenceCreateRequest } from '../models/EvidenceCreateRequest';
 import type { EvidencePromptRequest } from '../models/EvidencePromptRequest';
 import type { EvidenceUpdateRequest } from '../models/EvidenceUpdateRequest';
 import type { ExecuteInstructionRequest } from '../models/ExecuteInstructionRequest';
-import type { GameSessionDeleteRequest } from '../models/GameSessionDeleteRequest';
-import type { GameSessionDeleteResponse } from '../models/GameSessionDeleteResponse';
+import type { FusionActionRequest } from '../models/FusionActionRequest';
 import type { GenerateSuggestionRequest } from '../models/GenerateSuggestionRequest';
-import type { ImageGenerationRequest } from '../models/ImageGenerationRequest';
-import type { ImageResponse } from '../models/ImageResponse';
 import type { LocationPromptRequest } from '../models/LocationPromptRequest';
 import type { ParseInstructionRequest } from '../models/ParseInstructionRequest';
 import type { PasswordChange } from '../models/PasswordChange';
+import type { PhoneLogin } from '../models/PhoneLogin';
+import type { RefreshRequest } from '../models/RefreshRequest';
 import type { ScriptLocation } from '../models/ScriptLocation';
+import type { SelectCharacterRequest } from '../models/SelectCharacterRequest';
+import type { SmsCodeRequest } from '../models/SmsCodeRequest';
+import type { SmsCodeResponse } from '../models/SmsCodeResponse';
 import type { Token } from '../models/Token';
 import type { UserBrief } from '../models/UserBrief';
 import type { UserLogin } from '../models/UserLogin';
@@ -40,7 +43,7 @@ import { request as __request } from '../core/request';
 export class Service {
     /**
      * Parse Instruction
-     * 解析用户的自然语言指令
+     * 解析用户的自然语言指令（经 ScriptEditingAgent 计划模式：只校验不落库）
      * @param requestBody
      * @returns APIResponse_ParsedInstructionsResponse_ Successful Response
      * @throws ApiError
@@ -152,93 +155,6 @@ export class Service {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/script-editor/script/{script_id}/validation',
-            path: {
-                'script_id': scriptId,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * 生成图片
-     * 生成图片
-     * - image_type: 图片类型（cover, character, evidence, scene）必填
-     * - script_id: 剧本ID
-     * - positive_prompt: 提示词（可选，会通过LLM优化）
-     * @param requestBody
-     * @returns APIResponse_dict_ Successful Response
-     * @throws ApiError
-     */
-    public static generateImageApiImagesGeneratePost(
-        requestBody: ImageGenerationRequest,
-    ): CancelablePromise<APIResponse_dict_> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/images/generate',
-            body: requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * 获取当前用户的图片
-     * 获取当前用户的所有图片
-     * - script_id: 可选，如果提供则只返回该剧本的图片
-     * @param scriptId
-     * @returns ImageResponse Successful Response
-     * @throws ApiError
-     */
-    public static getMyImagesApiImagesMyImagesGet(
-        scriptId?: number,
-    ): CancelablePromise<Array<ImageResponse>> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/images/my-images',
-            query: {
-                'script_id': scriptId,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * 删除图片
-     * 删除指定图片
-     * @param imageId
-     * @returns any Successful Response
-     * @throws ApiError
-     */
-    public static deleteImageApiImagesImageIdDelete(
-        imageId: string,
-    ): CancelablePromise<any> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
-            url: '/api/images/{image_id}',
-            path: {
-                'image_id': imageId,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * 删除剧本相关图片
-     * 删除剧本相关的所有图片（仅剧本作者可操作）
-     * @param scriptId
-     * @returns any Successful Response
-     * @throws ApiError
-     */
-    public static deleteScriptImagesApiImagesScriptScriptIdDelete(
-        scriptId: number,
-    ): CancelablePromise<any> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
-            url: '/api/images/script/{script_id}',
             path: {
                 'script_id': scriptId,
             },
@@ -637,220 +553,6 @@ export class Service {
         });
     }
     /**
-     * Get Game Status
-     * 获取游戏状态API
-     * @param sessionId
-     * @returns any Successful Response
-     * @throws ApiError
-     */
-    public static getGameStatusApiGameStatusGet(
-        sessionId?: (string | null),
-    ): CancelablePromise<any> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/game/status',
-            query: {
-                'session_id': sessionId,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Start Game
-     * 启动游戏API
-     * @param sessionId
-     * @param scriptId
-     * @returns any Successful Response
-     * @throws ApiError
-     */
-    public static startGameApiGameStartPost(
-        sessionId?: (string | null),
-        scriptId: number = 1,
-    ): CancelablePromise<any> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/game/start',
-            query: {
-                'session_id': sessionId,
-                'script_id': scriptId,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Reset Game
-     * 重置游戏API
-     * @param sessionId
-     * @returns any Successful Response
-     * @throws ApiError
-     */
-    public static resetGameApiGameResetPost(
-        sessionId?: (string | null),
-    ): CancelablePromise<any> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/game/reset',
-            query: {
-                'session_id': sessionId,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Delete Game Sessions
-     * 删除游戏会话API（支持单个和批量删除）
-     *
-     * Args:
-     * delete_request: 删除请求，包含要删除的会话ID列表
-     * session_repo: 游戏会话仓库依赖
-     *
-     * Returns:
-     * GameSessionDeleteResponse: 删除结果响应
-     * @param requestBody
-     * @returns GameSessionDeleteResponse Successful Response
-     * @throws ApiError
-     */
-    public static deleteGameSessionsApiGameSessionsDelete(
-        requestBody: GameSessionDeleteRequest,
-    ): CancelablePromise<GameSessionDeleteResponse> {
-        return __request(OpenAPI, {
-            method: 'DELETE',
-            url: '/api/game/sessions',
-            body: requestBody,
-            mediaType: 'application/json',
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * List Game History
-     * @param page 页码(>=1)
-     * @param size 每页大小
-     * @param skip (兼容) 偏移量
-     * @param limit (兼容) 限制条数
-     * @param status
-     * @param scriptId
-     * @param startDate
-     * @param endDate
-     * @returns any Successful Response
-     * @throws ApiError
-     */
-    public static listGameHistoryApiUsersGameHistoryGet(
-        page: number = 1,
-        size: number = 20,
-        skip?: (number | null),
-        limit?: (number | null),
-        status?: (string | null),
-        scriptId?: (number | null),
-        startDate?: (string | null),
-        endDate?: (string | null),
-    ): CancelablePromise<any> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/users/game-history',
-            query: {
-                'page': page,
-                'size': size,
-                'skip': skip,
-                'limit': limit,
-                'status': status,
-                'script_id': scriptId,
-                'start_date': startDate,
-                'end_date': endDate,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Get Game Detail
-     * @param sessionId
-     * @returns any Successful Response
-     * @throws ApiError
-     */
-    public static getGameDetailApiUsersGameHistorySessionIdGet(
-        sessionId: string,
-    ): CancelablePromise<any> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/users/game-history/{session_id}',
-            path: {
-                'session_id': sessionId,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Get Game Events
-     * @param sessionId
-     * @param page
-     * @param size
-     * @param eventType
-     * @param characterName
-     * @param startTime
-     * @param endTime
-     * @returns any Successful Response
-     * @throws ApiError
-     */
-    public static getGameEventsApiUsersGameHistorySessionIdEventsGet(
-        sessionId: string,
-        page: number = 1,
-        size: number = 50,
-        eventType?: (string | null),
-        characterName?: (string | null),
-        startTime?: (string | null),
-        endTime?: (string | null),
-    ): CancelablePromise<any> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/users/game-history/{session_id}/events',
-            path: {
-                'session_id': sessionId,
-            },
-            query: {
-                'page': page,
-                'size': size,
-                'event_type': eventType,
-                'character_name': characterName,
-                'start_time': startTime,
-                'end_time': endTime,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
-     * Resume Game
-     * @param sessionId
-     * @returns any Successful Response
-     * @throws ApiError
-     */
-    public static resumeGameApiUsersGameHistorySessionIdResumePost(
-        sessionId: string,
-    ): CancelablePromise<any> {
-        return __request(OpenAPI, {
-            method: 'POST',
-            url: '/api/users/game-history/{session_id}/resume',
-            path: {
-                'session_id': sessionId,
-            },
-            errors: {
-                422: `Validation Error`,
-            },
-        });
-    }
-    /**
      * Upload File
      * 文件上传API
      *
@@ -979,18 +681,6 @@ export class Service {
         });
     }
     /**
-     * Get Available Voices
-     * 获取可用的TTS声音列表
-     * @returns any Successful Response
-     * @throws ApiError
-     */
-    public static getAvailableVoicesApiTtsVoicesGet(): CancelablePromise<Record<string, any>> {
-        return __request(OpenAPI, {
-            method: 'GET',
-            url: '/api/tts/voices',
-        });
-    }
-    /**
      * Get Assets
      * 通过storage接口获取MinIO文件
      * @param path
@@ -1009,6 +699,79 @@ export class Service {
             errors: {
                 422: `Validation Error`,
             },
+        });
+    }
+    /**
+     * 发送手机验证码
+     * @param requestBody
+     * @returns SmsCodeResponse Successful Response
+     * @throws ApiError
+     */
+    public static sendSmsCodeApiAuthSmsCodePost(
+        requestBody: SmsCodeRequest,
+    ): CancelablePromise<SmsCodeResponse> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/auth/sms-code',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * 手机号验证码登录或首次注册
+     * @param requestBody
+     * @returns Token Successful Response
+     * @throws ApiError
+     */
+    public static phoneLoginApiAuthPhoneLoginPost(
+        requestBody: PhoneLogin,
+    ): CancelablePromise<Token> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/auth/phone-login',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * 用续期凭条换取新的访问令牌
+     * 访问令牌到期后在后台静默换新，使用者无需重新登录。
+     *
+     * 换发时会挂失用过的这张续期凭条并下发新的一张，因此同一张凭条只能用一次；
+     * 凭条被盗用后，真实用户的下一次换发就会失败，异常可以被发现。
+     * @param requestBody
+     * @returns Token Successful Response
+     * @throws ApiError
+     */
+    public static refreshAccessTokenApiAuthRefreshPost(
+        requestBody: RefreshRequest,
+    ): CancelablePromise<Token> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/auth/refresh',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * 匿名登录
+     * 匿名登录 — 仅在 ALLOW_ANONYMOUS_ACCESS=true 时可用，自动以默认访客账户登录
+     * @returns Token Successful Response
+     * @throws ApiError
+     */
+    public static anonymousLoginApiAuthAnonymousLoginPost(): CancelablePromise<Token> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/auth/anonymous-login',
         });
     }
     /**
@@ -1053,7 +816,7 @@ export class Service {
     }
     /**
      * 获取当前用户信息
-     * 获取当前用户信息（使用中间件认证）
+     * 获取当前用户信息（由认证中间件注入）
      * @returns UserResponse Successful Response
      * @throws ApiError
      */
@@ -1105,7 +868,10 @@ export class Service {
     }
     /**
      * 用户登出
-     * 用户登出
+     * 用户登出，并让本次使用的令牌立即失效。
+     *
+     * 此前登出只是让前端把令牌删掉，那枚令牌在服务端依然被接受，
+     * 泄露后无法收回。现在会把它的编号写进挂失名单，剩余有效期内一律拒绝。
      * @returns any Successful Response
      * @throws ApiError
      */
@@ -1117,7 +883,7 @@ export class Service {
     }
     /**
      * 获取用户列表
-     * 获取用户列表（使用中间件管理员认证）
+     * 获取用户列表（由认证中间件验证管理员权限）
      * @param skip
      * @param limit
      * @returns UserBrief Successful Response
@@ -1170,6 +936,1214 @@ export class Service {
         return __request(OpenAPI, {
             method: 'GET',
             url: '/api/auth/verify-token',
+        });
+    }
+    /**
+     * Published Scripts
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static publishedScriptsApiFusionScriptsGet(): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/scripts',
+        });
+    }
+    /**
+     * Create Session
+     * @param requestBody
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static createSessionApiFusionSessionsPost(
+        requestBody: CreateFusionSessionRequest,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/sessions',
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Session State
+     * @param sessionId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static sessionStateApiFusionSessionsSessionIdGet(
+        sessionId: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/sessions/{session_id}',
+            path: {
+                'session_id': sessionId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Select Character
+     * @param sessionId
+     * @param requestBody
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static selectCharacterApiFusionSessionsSessionIdSelectCharacterPost(
+        sessionId: string,
+        requestBody: SelectCharacterRequest,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/sessions/{session_id}/select-character',
+            path: {
+                'session_id': sessionId,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Perform Action
+     * @param sessionId
+     * @param requestBody
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static performActionApiFusionSessionsSessionIdActionsPost(
+        sessionId: string,
+        requestBody: FusionActionRequest,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/sessions/{session_id}/actions',
+            path: {
+                'session_id': sessionId,
+            },
+            body: requestBody,
+            mediaType: 'application/json',
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Session Events
+     * @param sessionId
+     * @param after
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static sessionEventsApiFusionSessionsSessionIdEventsGet(
+        sessionId: string,
+        after?: number,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/sessions/{session_id}/events',
+            path: {
+                'session_id': sessionId,
+            },
+            query: {
+                'after': after,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Validate Script
+     * @param scriptId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static validateScriptApiAdminFusionScriptsScriptIdValidatePost(
+        scriptId: number,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/scripts/{script_id}/validate',
+            path: {
+                'script_id': scriptId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Review Script
+     * @param scriptId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static reviewScriptApiAdminFusionScriptsScriptIdReviewPost(
+        scriptId: number,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/scripts/{script_id}/review',
+            path: {
+                'script_id': scriptId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Publish Script
+     * @param scriptId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static publishScriptApiAdminFusionScriptsScriptIdPublishPost(
+        scriptId: number,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/scripts/{script_id}/publish',
+            path: {
+                'script_id': scriptId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Archive Script
+     * @param scriptId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static archiveScriptApiAdminFusionScriptsScriptIdArchivePost(
+        scriptId: number,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/scripts/{script_id}/archive',
+            path: {
+                'script_id': scriptId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Submit Package
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static submitPackageApiAdminFusionScriptImportsPost(): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/script-imports',
+        });
+    }
+    /**
+     * Get Import Job
+     * @param jobId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getImportJobApiAdminFusionScriptImportsJobIdGet(
+        jobId: number,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/admin/fusion/script-imports/{job_id}',
+            path: {
+                'job_id': jobId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Candidate Version
+     * @param versionId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getCandidateVersionApiAdminFusionScriptPackagesVersionIdGet(
+        versionId: number,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/admin/fusion/script-packages/{version_id}',
+            path: {
+                'version_id': versionId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * List Sources
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static listSourcesApiAdminFusionSourceBundlesGet(): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/admin/fusion/source-bundles',
+        });
+    }
+    /**
+     * Get Bundle
+     * @param bundleHash
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getBundleApiAdminFusionSourceBundlesBundleHashGet(
+        bundleHash: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/admin/fusion/source-bundles/{bundle_hash}',
+            path: {
+                'bundle_hash': bundleHash,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Read Source
+     * @param bundleHash
+     * @param sourceId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static readSourceApiAdminFusionSourceBundlesBundleHashSourcesSourceIdGet(
+        bundleHash: string,
+        sourceId: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/admin/fusion/source-bundles/{bundle_hash}/sources/{source_id}',
+            path: {
+                'bundle_hash': bundleHash,
+                'source_id': sourceId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Verify Bundle
+     * @param bundleHash
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static verifyBundleApiAdminFusionSourceBundlesBundleHashVerifyPost(
+        bundleHash: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/source-bundles/{bundle_hash}/verify',
+            path: {
+                'bundle_hash': bundleHash,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Verification
+     * @param reportHash
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getVerificationApiAdminFusionSourceVerificationsReportHashGet(
+        reportHash: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/admin/fusion/source-verifications/{report_hash}',
+            path: {
+                'report_hash': reportHash,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Verify Candidate
+     * @param versionId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static verifyCandidateApiAdminFusionScriptPackagesVersionIdVerifySourcesPost(
+        versionId: number,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/script-packages/{version_id}/verify-sources',
+            path: {
+                'version_id': versionId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * List Candidates
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static listCandidatesApiAdminFusionReviewCandidatesGet(): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/admin/fusion/review-candidates',
+        });
+    }
+    /**
+     * Read Review
+     * @param versionId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static readReviewApiAdminFusionScriptPackagesVersionIdReviewGet(
+        versionId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/admin/fusion/script-packages/{version_id}/review',
+            path: {
+                'version_id': versionId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Read Rule Review
+     * @param versionId
+     * @param bundleHash
+     * @param expectedPackageHash
+     * @param offset
+     * @param limit
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static readRuleReviewApiAdminFusionScriptPackagesVersionIdRuleReviewGet(
+        versionId: string,
+        bundleHash: string,
+        expectedPackageHash: string,
+        offset?: number,
+        limit: number = 20,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/admin/fusion/script-packages/{version_id}/rule-review',
+            path: {
+                'version_id': versionId,
+            },
+            query: {
+                'bundle_hash': bundleHash,
+                'expected_package_hash': expectedPackageHash,
+                'offset': offset,
+                'limit': limit,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Submit Audit
+     * @param versionId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static submitAuditApiAdminFusionScriptPackagesVersionIdAuditsPost(
+        versionId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/script-packages/{version_id}/audits',
+            path: {
+                'version_id': versionId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Add Disposition
+     * @param auditId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static addDispositionApiAdminFusionScriptAuditsAuditIdDispositionsPost(
+        auditId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/script-audits/{audit_id}/dispositions',
+            path: {
+                'audit_id': auditId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * List Jobs
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static listJobsApiAdminFusionAuthoringJobsGet(): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/admin/fusion/authoring-jobs',
+        });
+    }
+    /**
+     * Create Job
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static createJobApiAdminFusionAuthoringJobsPost(): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/authoring-jobs',
+        });
+    }
+    /**
+     * Create Job
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static createJobApiAdminFusionAuthoringJobsWithRulePlanPost(): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/authoring-jobs/with-rule-plan',
+        });
+    }
+    /**
+     * Get Job
+     * @param jobId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getJobApiAdminFusionAuthoringJobsJobIdGet(
+        jobId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/admin/fusion/authoring-jobs/{job_id}',
+            path: {
+                'job_id': jobId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Cancel Job
+     * @param jobId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static cancelJobApiAdminFusionAuthoringJobsJobIdCancelPost(
+        jobId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/authoring-jobs/{job_id}/cancel',
+            path: {
+                'job_id': jobId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Recover Job
+     * @param jobId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static recoverJobApiAdminFusionAuthoringJobsJobIdRecoverPost(
+        jobId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/authoring-jobs/{job_id}/recover',
+            path: {
+                'job_id': jobId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Publication State
+     * @param versionId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static publicationStateApiAdminFusionScriptPackagesVersionIdPublicationGet(
+        versionId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/admin/fusion/script-packages/{version_id}/publication',
+            path: {
+                'version_id': versionId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Approve Publication
+     * @param versionId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static approvePublicationApiAdminFusionScriptPackagesVersionIdApprovalsPost(
+        versionId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/script-packages/{version_id}/approvals',
+            path: {
+                'version_id': versionId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Publish Package
+     * @param versionId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static publishPackageApiAdminFusionScriptPackagesVersionIdPublishPost(
+        versionId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/admin/fusion/script-packages/{version_id}/publish',
+            path: {
+                'version_id': versionId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * List Releases
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static listReleasesApiFusionPackageReleasesGet(): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/package-releases',
+        });
+    }
+    /**
+     * Create Session
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static createSessionApiFusionPackageSessionsPost(): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-sessions',
+        });
+    }
+    /**
+     * Get Session
+     * @param sessionId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getSessionApiFusionPackageSessionsSessionIdGet(
+        sessionId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/package-sessions/{session_id}',
+            path: {
+                'session_id': sessionId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Get Opening Image
+     * @param sessionId
+     * @param visualId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static getOpeningImageApiFusionPackageSessionsSessionIdImagesVisualIdGet(
+        sessionId: string,
+        visualId: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/package-sessions/{session_id}/images/{visual_id}',
+            path: {
+                'session_id': sessionId,
+                'visual_id': visualId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Find Flow
+     * @param openingSessionId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static findFlowApiFusionPackageFlowsGet(
+        openingSessionId: string = '',
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/package-flows',
+            query: {
+                'opening_session_id': openingSessionId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Create Flow
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static createFlowApiFusionPackageFlowsPost(): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-flows',
+        });
+    }
+    /**
+     * Read Flow
+     * @param flowId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static readFlowApiFusionPackageFlowsFlowIdGet(
+        flowId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/package-flows/{flow_id}',
+            path: {
+                'flow_id': flowId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Act Flow
+     * @param flowId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static actFlowApiFusionPackageFlowsFlowIdActionsPost(
+        flowId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-flows/{flow_id}/actions',
+            path: {
+                'flow_id': flowId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Decide Role
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static decideRoleApiFusionPackagePlaysPlayIdDecisionsPost(
+        playId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/decisions',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Private Response
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static privateResponseApiFusionPackagePlaysPlayIdPrivateResponsesPost(
+        playId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/private-responses',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Phone Step
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static phoneStepApiFusionPackagePlaysPlayIdPhoneStepPost(
+        playId: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/phone-step',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Phone Pause
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static phonePauseApiFusionPackagePlaysPlayIdPhonePausePost(
+        playId: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/phone-pause',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * List Play Library
+     * @param offset
+     * @param limit
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static listPlayLibraryApiFusionPackagePlayLibraryGet(
+        offset: string = '0',
+        limit: string = '20',
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/package-play-library',
+            query: {
+                'offset': offset,
+                'limit': limit,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Find Play
+     * @param openingSessionId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static findPlayApiFusionPackagePlaysGet(
+        openingSessionId: string = '',
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/package-plays',
+            query: {
+                'opening_session_id': openingSessionId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Create Play
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static createPlayApiFusionPackagePlaysPost(): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays',
+        });
+    }
+    /**
+     * Read Play
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static readPlayApiFusionPackagePlaysPlayIdGet(
+        playId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/package-plays/{play_id}',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Read Play Image
+     * @param playId
+     * @param visualId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static readPlayImageApiFusionPackagePlaysPlayIdImagesVisualIdGet(
+        playId: string,
+        visualId: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/package-plays/{play_id}/images/{visual_id}',
+            path: {
+                'play_id': playId,
+                'visual_id': visualId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Act Play
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static actPlayApiFusionPackagePlaysPlayIdActionsPost(
+        playId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/actions',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Ask Role
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static askRoleApiFusionPackagePlaysPlayIdAskPost(
+        playId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/ask',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Speak Play
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static speakPlayApiFusionPackagePlaysPlayIdDiscussionPost(
+        playId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/discussion',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Propose Investigation
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static proposeInvestigationApiFusionPackagePlaysPlayIdProposalsPost(
+        playId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/proposals',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Respond Role
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static respondRoleApiFusionPackagePlaysPlayIdResponsesPost(
+        playId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/responses',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Table Action
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static tableActionApiFusionPackagePlaysPlayIdTablePost(
+        playId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/table',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Guided Play
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static guidedPlayApiFusionPackagePlaysPlayIdGuidedPost(
+        playId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/guided',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Topic Play
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static topicPlayApiFusionPackagePlaysPlayIdTopicPost(
+        playId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/topic',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Complete Finale Motivations
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static completeFinaleMotivationsApiFusionPackagePlaysPlayIdFinaleMotivationsPost(
+        playId: string,
+    ): CancelablePromise<Record<string, any>> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/finale-motivations',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Availability
+     * @param playId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static availabilityApiFusionPackagePlaysPlayIdSpeechInputGet(
+        playId: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/package-plays/{play_id}/speech-input',
+            path: {
+                'play_id': playId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Stream Ticket
+     * @param playId
+     * @param requestId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static streamTicketApiFusionPackagePlaysPlayIdSpeechStreamRequestIdTicketPost(
+        playId: string,
+        requestId: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/speech-stream/{request_id}/ticket',
+            path: {
+                'play_id': playId,
+                'request_id': requestId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Receipt
+     * @param playId
+     * @param requestId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static receiptApiFusionPackagePlaysPlayIdSpeechInputRequestIdGet(
+        playId: string,
+        requestId: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'GET',
+            url: '/api/fusion/package-plays/{play_id}/speech-input/{request_id}',
+            path: {
+                'play_id': playId,
+                'request_id': requestId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
+        });
+    }
+    /**
+     * Transcribe
+     * @param playId
+     * @param requestId
+     * @returns any Successful Response
+     * @throws ApiError
+     */
+    public static transcribeApiFusionPackagePlaysPlayIdSpeechInputRequestIdPost(
+        playId: string,
+        requestId: string,
+    ): CancelablePromise<any> {
+        return __request(OpenAPI, {
+            method: 'POST',
+            url: '/api/fusion/package-plays/{play_id}/speech-input/{request_id}',
+            path: {
+                'play_id': playId,
+                'request_id': requestId,
+            },
+            errors: {
+                422: `Validation Error`,
+            },
         });
     }
 }

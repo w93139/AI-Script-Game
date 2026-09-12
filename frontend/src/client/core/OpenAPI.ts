@@ -2,17 +2,10 @@
 /* istanbul ignore file */
 /* tslint:disable */
 /* eslint-disable */
-import { config } from '@/stores/configStore';
 import type { ApiRequestOptions } from './ApiRequestOptions';
 
 type Resolver<T> = (options: ApiRequestOptions) => Promise<T>;
 type Headers = Record<string, string>;
-
-const getToken = (options: ApiRequestOptions) => {
-    const token = localStorage.getItem('access_token');
-    return token || undefined;
-}
-
 
 export type OpenAPIConfig = {
     BASE: string;
@@ -27,14 +20,11 @@ export type OpenAPIConfig = {
 };
 
 export const OpenAPI: OpenAPIConfig = {
-    BASE: config.api.baseUrl,
+    BASE: '',
     VERSION: '0.1.0',
     WITH_CREDENTIALS: false,
     CREDENTIALS: 'include',
-    TOKEN: async (options: ApiRequestOptions) => {
-        const token = localStorage.getItem('access_token');
-        return token || '';
-    },
+    TOKEN: undefined,
     USERNAME: undefined,
     PASSWORD: undefined,
     HEADERS: undefined,

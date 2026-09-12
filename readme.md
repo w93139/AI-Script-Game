@@ -38,12 +38,23 @@ cd frontend && npx next dev -p 3001                # 前端 127.0.0.1:3001
 
 浏览器打开 <http://127.0.0.1:3001/play>。
 
+> 当前仓库不含任何可玩的剧本正文（商业剧本受版权保护，不得入库）。
+> 开发者可用 `backend/scripts/seed_demo_package.py` 导入一份虚构示例剧本：
+>
+> ```bash
+> # 需要 .env 里配置好 DASHSCOPE_API_KEY 与定价变量，会产生少量云模型费用
+> backend/.venv/bin/python backend/scripts/seed_demo_package.py --allow-paid
+> ```
+> 脚本会走完整真实链路（编译 → 模型审核 → 人工审核 → 审批 → 发布），
+> 完成后 `/play` 即能看到这份演示剧本。仅限开发环境，生产环境会拒绝执行。
+
 ## 文档从哪看
 
 | 想知道什么 | 看这里 |
 | --- | --- |
 | 怎么把环境装起来 | [从零搭建本机环境](docs/development/LOCAL_SETUP_FROM_SCRATCH.md) |
 | 装好之后怎么用 | [小白本地启动说明](docs/development/LOCAL_DEVELOPMENT.md) |
+| 怎么参与贡献 | [贡献指南](CONTRIBUTING.md) |
 | 接下来要做什么 | [迭代方案](迭代方案.md) |
 | 验收标准 | [验收清单](docs/development/ACCEPTANCE.md) |
 | 以前发生过什么 | [变更记录](CHANGELOG.md) |

@@ -9,6 +9,7 @@ export type UserResponse = {
     id: number;
     username: string;
     email: string;
+    phone?: (string | null);
     nickname: (string | null);
     avatar_url: (string | null);
     bio: (string | null);
