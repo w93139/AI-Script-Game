@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { usePlaySessionStore } from "@/stores/playSessionStore";
 import { usePlayUiStore } from "@/stores/playStore";
 import { PhaseBar } from "./PhaseBar";
@@ -55,9 +56,16 @@ export function PlayRoom() {
 
   const [mockEntries, setMockEntries] = useState<DepositionEntry[]>([]);
 
+  const searchParams = useSearchParams();
+  const playId = searchParams.get("play_id");
+  const openingSessionId = searchParams.get("opening_session_id");
+
   useEffect(() => {
-    void bootstrap();
-  }, [bootstrap]);
+    void bootstrap({
+      playId: playId ?? undefined,
+      openingSessionId: openingSessionId ?? undefined,
+    });
+  }, [bootstrap, playId, openingSessionId]);
 
   useEffect(() => {
     setCurrentAct(actFor(play));

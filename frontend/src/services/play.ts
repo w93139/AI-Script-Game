@@ -4,6 +4,7 @@ import type {
   AskBody,
   CreatePlayBody,
   CreateSessionBody,
+  LibraryResult,
   OpeningSession,
   PlayView,
   Release,
@@ -69,5 +70,13 @@ export function ask(playId: string, body: AskBody) {
 export function speak(playId: string, body: SpeakBody) {
   return unwrap<PlayView>(
     http.post(`/api/fusion/package-plays/${playId}/discussion`, body),
+  );
+}
+
+export function listLibrary(offset = 0, limit = 20) {
+  return unwrap<LibraryResult>(
+    http.get("/api/fusion/package-play-library", {
+      params: { offset: String(offset), limit: String(limit) },
+    }),
   );
 }

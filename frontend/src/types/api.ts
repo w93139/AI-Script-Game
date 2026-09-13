@@ -74,6 +74,10 @@ export interface PlayView {
   status: "TEXT_PLAY" | "SETTLED";
   settled: boolean;
   revision?: number;
+  script?: { title: string };
+  characters?: { id: string; name: string }[];
+  selected_character_id?: string;
+  can_advance?: boolean;
   selected_character?: { id: string; name: string } | null;
   phase?: { id: string; title: string } | null;
   public_knowledge?: Material[];
@@ -134,4 +138,20 @@ export interface SpeakBody {
   expected_revision: number;
   idempotency_key: string;
   text: string;
+}
+
+export interface LibraryItem {
+  play_id: string;
+  opening_session_id: string;
+  title: string;
+  character_name: string;
+  phase_label: string;
+  settled: boolean;
+  revision: number;
+  updated_at: string;
+}
+
+export interface LibraryResult {
+  items: LibraryItem[];
+  has_more: boolean;
 }

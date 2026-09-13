@@ -7,6 +7,7 @@ import {
   createSession,
   findPlay,
   getPlay,
+  getSession,
   listReleases,
   speak,
 } from "@/services/play";
@@ -22,8 +23,8 @@ interface PlaySessionState {
   play: PlayView | null;
   characters: ReleaseCharacter[];
   error: string | null;
-  /** 建立匿名登录 → 选剧本/角色 → 开场 → 试玩 的完整链路；任一步失败回退 mock。 */
-  bootstrap: () => Promise<void>;
+  /** 建立登录 → 选剧本/角色 → 开场 → 试玩 的链路；可传入 play_id 或 opening_session_id 续玩；任一步失败回退 mock。 */
+  bootstrap: (resume?: { playId?: string; openingSessionId?: string }) => Promise<void>;
   refresh: () => Promise<void>;
   performAction: (action: PlayActionName, target?: ActionBody["target"]) => Promise<void>;
   speakText: (text: string) => Promise<void>;
@@ -37,11 +38,23 @@ export const usePlaySessionStore = create<PlaySessionState>((set, get) => ({
   characters: [],
   error: null,
 
-  bootstrap: async () => {
+  bootstrap: async (resume) => {
     set({ mode: "connecting", error: null });
     try {
       const token = await anonymousLogin();
       saveToken(token);
+
+      if (resume?.playId) {
+        const play = await getPlay(resume.playId);
+        set({
+          mode: "live",
+          play,
+          title: play.script?.title ?? "剧本",
+          characters: play.characters ?? [],
+          error: null,
+        });
+        return;
+      }
 
       const releases = await listReleases();
       if (!releases.length) throw new Error("NO_RELEASES");
@@ -49,11 +62,13 @@ export const usePlaySessionStore = create<PlaySessionState>((set, get) => ({
       const character = release.characters[0];
       if (!character) throw new Error("NO_CHARACTERS");
 
-      const opening = await createSession({
-        release_id: release.id,
-        character_id: character.id,
-        idempotency_key: newKey(),
-      });
+      const opening = resume?.openingSessionId
+        ? await getSession(resume.openingSessionId)
+        : await createSession({
+            release_id: release.id,
+            character_id: character.id,
+            idempotency_key: newKey(),
+          });
 
       const existing = await findPlay(opening.session_id);
       const play =
@@ -63,7 +78,13 @@ export const usePlaySessionStore = create<PlaySessionState>((set, get) => ({
           idempotency_key: newKey(),
         }));
 
-      set({ mode: "live", play, title: release.title, characters: opening.characters, error: null });
+      set({
+        mode: "live",
+        play,
+        title: opening.script?.title ?? release.title,
+        characters: opening.characters,
+        error: null,
+      });
     } catch (err) {
       set({ mode: "mock", play: null, error: errorCode(err) });
     }
