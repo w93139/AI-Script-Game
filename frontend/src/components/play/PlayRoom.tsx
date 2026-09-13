@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePlaySessionStore } from "@/stores/playSessionStore";
 import { usePlayUiStore } from "@/stores/playStore";
 import { PhaseBar } from "./PhaseBar";
 import { NarrativeStream } from "./NarrativeStream";
 import { ArchiveDrawer } from "./ArchiveDrawer";
 import { ActionBar } from "./ActionBar";
+import { Composer } from "./Composer";
 import { MOCK_DEPOSITIONS, MOCK_TITLE } from "@/lib/mock";
 import type { PlayView } from "@/types/api";
 import type { ActId, DepositionEntry } from "@/types/play";
@@ -19,7 +20,7 @@ function actFor(play: PlayView | null): ActId {
 }
 
 function depositionsFor(play: PlayView | null): DepositionEntry[] {
-  if (!play) return MOCK_DEPOSITIONS;
+  if (!play) return [];
   const out: DepositionEntry[] = [];
   let seq = 0;
   for (const d of play.dialogue ?? []) {
@@ -34,13 +35,25 @@ function depositionsFor(play: PlayView | null): DepositionEntry[] {
   for (const e of play.discussion?.entries ?? []) {
     out.push({ id: e.id, seq: ++seq, speaker: e.speaker, text: e.text });
   }
-  return out.length ? out : MOCK_DEPOSITIONS;
+  return out;
 }
 
 export function PlayRoom() {
-  const { mode, title, play, error, bootstrap } = usePlaySessionStore();
+  const {
+    mode,
+    title,
+    play,
+    error,
+    bootstrap,
+    speakText,
+    askQuestion,
+    characters,
+  } = usePlaySessionStore();
   const archiveOpen = usePlayUiStore((s) => s.archiveOpen);
+  const actionMode = usePlayUiStore((s) => s.actionMode);
   const setCurrentAct = usePlayUiStore((s) => s.setCurrentAct);
+
+  const [mockEntries, setMockEntries] = useState<DepositionEntry[]>([]);
 
   useEffect(() => {
     void bootstrap();
@@ -51,7 +64,46 @@ export function PlayRoom() {
   }, [play, setCurrentAct]);
 
   const isLive = mode === "live" && play;
+  const liveDepositions = isLive ? depositionsFor(play) : [];
+  const entries = isLive
+    ? liveDepositions.length
+      ? liveDepositions
+      : MOCK_DEPOSITIONS
+    : [...MOCK_DEPOSITIONS, ...mockEntries];
+
   const points = play?.mechanics?.remaining_points;
+  const settlement = play?.settlement;
+
+  const send = (text: string) => {
+    if (isLive) {
+      if (actionMode === "ask") {
+        const target =
+          characters.find((c) => c.id !== play.selected_character?.id) ??
+          characters[0];
+        if (target) {
+          void askQuestion(target.id, text);
+          return;
+        }
+      }
+      void speakText(text);
+      return;
+    }
+    setMockEntries((prev) => [
+      ...prev,
+      {
+        id: `mock-${prev.length}`,
+        seq: MOCK_DEPOSITIONS.length + prev.length + 1,
+        speaker: "你",
+        self: true,
+        text,
+      },
+    ]);
+  };
+
+  const placeholder =
+    actionMode === "ask"
+      ? "向角色提问…（回车发送，Esc 取消）"
+      : "公开发言…（回车发送，Esc 取消）";
 
   return (
     <div className="flex h-screen flex-col">
@@ -70,13 +122,38 @@ export function PlayRoom() {
                 已连接 · 本局 {play.play_id.slice(0, 12)}
               </div>
             )}
-            <NarrativeStream entries={depositionsFor(play)} />
+
+            {settlement && (
+              <div className="mb-8 rounded-lg border border-acid-lime/30 bg-carbon p-5">
+                <div className="font-mono text-[11px] tracking-widest text-acid-lime">
+                  真相揭晓
+                </div>
+                <p className="mt-3 text-[15px] leading-relaxed text-mist">
+                  {settlement.text}
+                </p>
+                {settlement.truths && settlement.truths.length > 0 && (
+                  <ul className="mt-3 space-y-1">
+                    {settlement.truths.map((t) => (
+                      <li key={t.id} className="text-[13px] text-ash">
+                        · {t.text}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            <NarrativeStream entries={entries} />
           </div>
         </main>
         {archiveOpen && <ArchiveDrawer />}
       </div>
 
-      <ActionBar contact="唐小姐" />
+      {actionMode !== "idle" ? (
+        <Composer placeholder={placeholder} onSend={send} />
+      ) : (
+        <ActionBar contact="唐小姐" />
+      )}
     </div>
   );
 }

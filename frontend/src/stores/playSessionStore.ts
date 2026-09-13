@@ -2,15 +2,17 @@ import { create } from "zustand";
 import { anonymousLogin, saveToken } from "@/services/auth";
 import {
   act,
+  ask,
   createPlay,
   createSession,
   findPlay,
   getPlay,
   listReleases,
+  speak,
 } from "@/services/play";
 import { newKey } from "@/lib/id";
 import { errorCode } from "@/lib/http";
-import type { PlayActionName, PlayView } from "@/types/api";
+import type { ActionBody, PlayActionName, PlayView, ReleaseCharacter } from "@/types/api";
 
 export type SessionMode = "connecting" | "live" | "mock";
 
@@ -18,17 +20,21 @@ interface PlaySessionState {
   mode: SessionMode;
   title: string;
   play: PlayView | null;
+  characters: ReleaseCharacter[];
   error: string | null;
   /** 建立匿名登录 → 选剧本/角色 → 开场 → 试玩 的完整链路；任一步失败回退 mock。 */
   bootstrap: () => Promise<void>;
   refresh: () => Promise<void>;
-  performAction: (action: PlayActionName) => Promise<void>;
+  performAction: (action: PlayActionName, target?: ActionBody["target"]) => Promise<void>;
+  speakText: (text: string) => Promise<void>;
+  askQuestion: (characterId: string, question: string) => Promise<void>;
 }
 
 export const usePlaySessionStore = create<PlaySessionState>((set, get) => ({
   mode: "connecting",
   title: "孽岛疑云",
   play: null,
+  characters: [],
   error: null,
 
   bootstrap: async () => {
@@ -57,7 +63,7 @@ export const usePlaySessionStore = create<PlaySessionState>((set, get) => ({
           idempotency_key: newKey(),
         }));
 
-      set({ mode: "live", play, title: release.title, error: null });
+      set({ mode: "live", play, title: release.title, characters: opening.characters, error: null });
     } catch (err) {
       set({ mode: "mock", play: null, error: errorCode(err) });
     }
@@ -73,7 +79,7 @@ export const usePlaySessionStore = create<PlaySessionState>((set, get) => ({
     }
   },
 
-  performAction: async (action: PlayActionName) => {
+  performAction: async (action, target = null) => {
     const { play } = get();
     if (!play) return;
     try {
@@ -81,6 +87,40 @@ export const usePlaySessionStore = create<PlaySessionState>((set, get) => ({
         expected_revision: play.revision ?? 0,
         idempotency_key: newKey(),
         action,
+        target,
+      });
+      set({ play: fresh, error: null });
+    } catch (err) {
+      set({ error: errorCode(err) });
+    }
+  },
+
+  speakText: async (text) => {
+    const { play } = get();
+    if (!play) return;
+    try {
+      const fresh = await speak(play.play_id, {
+        schema_version: "package-discussion-command/1.0",
+        action: "SPEAK",
+        expected_revision: play.revision ?? 0,
+        idempotency_key: newKey(),
+        text,
+      });
+      set({ play: fresh, error: null });
+    } catch (err) {
+      set({ error: errorCode(err) });
+    }
+  },
+
+  askQuestion: async (characterId, question) => {
+    const { play } = get();
+    if (!play) return;
+    try {
+      const fresh = await ask(play.play_id, {
+        expected_revision: play.revision ?? 0,
+        idempotency_key: newKey(),
+        character_id: characterId,
+        question,
       });
       set({ play: fresh, error: null });
     } catch (err) {
