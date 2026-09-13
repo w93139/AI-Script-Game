@@ -19,6 +19,7 @@ ai_agent.log
 log/*
 
 backend/.data
+/.data/
 .figma/*
 
 # Private/copyrighted source material must never be committed.
