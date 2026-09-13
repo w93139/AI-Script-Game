@@ -132,28 +132,6 @@ def collect(
     for name in ("pytest", "uvicorn"):
         findings.extend(check_shebang(root / "backend/.venv/bin" / name, backend_python))
 
-    node = which("node")
-    if not node:
-        findings.append(Finding("BLOCK", "Node", "node 不在当前 PATH；VS Code 与终端的 PATH 可能不同。"))
-    else:
-        result = runner([node, "--version"], root)
-        match = re.fullmatch(r"v(\d+)\.(\d+)\.(\d+)", result.stdout.strip())
-        if result.returncode or not match:
-            findings.append(Finding("BLOCK", "Node", "版本探针失败/超时。"))
-        else:
-            version = tuple(map(int, match.groups()))
-            findings.append(Finding("OK" if version >= (20, 9, 0) else "BLOCK", "Node", result.stdout.strip() + "；Next 16 至少需要 20.9。"))
-    findings.append(Finding("OK" if which("npm") else "WARN", "npm", "已找到。" if which("npm") else "不在 PATH；现有离线 Node 检查仍可独立运行。"))
-    for name in ("next", "react", "react-dom", "typescript"):
-        try:
-            package = json.loads((root / "frontend/node_modules" / name / "package.json").read_text(encoding="utf-8"))
-            version = package["version"]
-            if not isinstance(version, str):
-                raise ValueError("invalid version")
-            findings.append(Finding("OK", name, "已安装 " + version))
-        except (OSError, ValueError, KeyError, TypeError):
-            findings.append(Finding("BLOCK", name, "缺少/无法读取已安装依赖的版本元数据；不会安装。"))
-
     uv = which("uv")
     if uv:
         result = runner([uv, "--version"], root)
@@ -166,11 +144,11 @@ def collect(
     if not git or runner([git, "rev-parse", "--is-inside-work-tree"], root).stdout.strip() != "true":
         findings.append(Finding("BLOCK", "Git", "无法确认当前目录为 Git 工作区。"))
     else:
-        protected = (".env", "backend/.env", "frontend/.env.local", "private-data/preflight-placeholder")
+        protected = (".env", "backend/.env", "private-data/preflight-placeholder")
         for relative in protected:
             result = runner([git, "check-ignore", "-q", "--no-index", "--", relative], root)
             findings.append(Finding("OK" if result.returncode == 0 else "WARN", "Git 忽略 " + relative, "规则已覆盖。" if result.returncode == 0 else "未确认忽略；请人工检查，不会自动修改规则。"))
-        tracked = runner([git, "ls-files", "-z", "--", ".env", "backend/.env", "frontend/.env.local", "private-data"], root)
+        tracked = runner([git, "ls-files", "-z", "--", ".env", "backend/.env", "private-data"], root)
         if tracked.returncode:
             findings.append(Finding("WARN", "Git 私密文件", "无法确认跟踪状态。"))
         else:

@@ -21,10 +21,6 @@ class PreflightTests(unittest.TestCase):
         python.parent.mkdir(parents=True)
         python.write_text("synthetic executable; never launched", encoding="utf-8")
         python.chmod(0o700)
-        for name in ("next", "react", "react-dom", "typescript"):
-            target = self.root / "frontend/node_modules" / name / "package.json"
-            target.parent.mkdir(parents=True)
-            target.write_text(json.dumps({"version": "1.2.3"}), encoding="utf-8")
         secret = self.root / ".env"
         secret.write_text("SYNTHETIC_SECRET=must-not-be-read", encoding="utf-8")
         secret.chmod(0o600)
@@ -34,8 +30,6 @@ class PreflightTests(unittest.TestCase):
         if "-I" in args:
             names = ("pytest", "uvicorn", "fastapi", "sqlalchemy", "pydantic", "jsonschema", "python-dotenv", "openai", "redis", "debugpy", "pillow")
             return doctor.CommandResult(0, json.dumps({"python": [3, 13, 15], "packages": dict.fromkeys(names, "1.2.3")}))
-        if args[0] == "/fake/node":
-            return doctor.CommandResult(0, "v24.19.0\n")
         if args[0] == "/fake/uv":
             return doctor.CommandResult(0, "uv 0.12.5 (synthetic)")
         if "rev-parse" in args:
@@ -130,16 +124,6 @@ class PreflightTests(unittest.TestCase):
         self.assertEqual(result.stdout, "")
         self.assertEqual(run.call_args.kwargs["timeout"], 5)
 
-    def test_unsupported_node_version_is_a_blocker(self):
-        self.make_ready_layout()
-
-        def runner(args, cwd):
-            return doctor.CommandResult(0, "v18.20.0") if args[0] == "/fake/node" else self.fake_runner(args, cwd)
-
-        findings = doctor.collect(self.root, runner, lambda name: "/fake/" + name)
-        self.assertTrue(any(item.check == "Node" and item.level == "BLOCK" for item in findings))
-
-
 class TaskConfigurationTests(unittest.TestCase):
     """Read only the new, non-secret task configuration; never launch tasks."""
 
@@ -164,7 +148,7 @@ class TaskConfigurationTests(unittest.TestCase):
 
     def test_manual_start_is_confirmed_localhost_and_does_not_use_old_shebangs(self):
         starts = [item for label, item in self.tasks.items() if label.startswith("手动启动：")]
-        self.assertEqual(len(starts), 2)
+        self.assertEqual(len(starts), 1)
         for item in starts:
             dependencies = item["dependsOn"] if isinstance(item["dependsOn"], list) else [item["dependsOn"]]
             self.assertIn("确认：手动启动服务（输入 START）", dependencies)
@@ -178,12 +162,6 @@ class TaskConfigurationTests(unittest.TestCase):
         environment = self.tasks["环境：准备本地依赖并迁移"]
         self.assertEqual(environment["dependsOrder"], "sequence")
         self.assertEqual(environment["dependsOn"][-1], "数据库：升级结构到最新版")
-
-    def test_local_service_urls_are_consistent(self):
-        backend = self.tasks["手动启动：后端 127.0.0.1:8010（有副作用）"]
-        frontend = self.tasks["手动启动：前端 127.0.0.1:3001（有副作用）"]
-        self.assertEqual(frontend["options"]["env"]["NEXT_PUBLIC_API_URL"], "http://127.0.0.1:8010")
-        self.assertIn("http://127.0.0.1:3001", backend["options"]["env"]["CORS_ORIGINS"])
 
     def test_confirmation_rejects_empty_or_wrong_input(self):
         script = self.tasks["确认：手动启动服务（输入 START）"]["args"][-1]

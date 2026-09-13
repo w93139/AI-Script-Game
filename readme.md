@@ -1,7 +1,7 @@
 # 🎭 人生海海
 
 面向手机浏览器的单真人 AI 剧本杀：玩家选择一个角色，其余 3–7 名角色由 AI 演绎。
-FastAPI + Next.js 单体。**规则引擎是阶段、搜证、证据可见性和投票的唯一权威；
+FastAPI 单体（前端界面当前已移除，待重建）。**规则引擎是阶段、搜证、证据可见性和投票的唯一权威；
 云模型只生成角色候选发言，不能直接修改游戏状态。**
 
 [English Version](README_EN.md) ｜ [历史进度记录](CHANGELOG.md)
@@ -33,10 +33,9 @@ FastAPI + Next.js 单体。**规则引擎是阶段、搜证、证据可见性和
 backend/.venv/bin/python scripts/local_postgres.py start
 backend/.venv/bin/python scripts/local_redis.py start
 cd backend && ./.venv/bin/python -B main.py        # 后端 127.0.0.1:8010
-cd frontend && npx next dev -p 3001                # 前端 127.0.0.1:3001
 ```
 
-浏览器打开 <http://127.0.0.1:3001/play>。
+后端 API 地址 <http://127.0.0.1:8010>。前端界面已移除待重建，重建后再接入浏览器。
 
 > 当前仓库不含任何可玩的剧本正文（商业剧本受版权保护，不得入库）。
 > 开发者可用 `backend/scripts/seed_demo_package.py` 导入一份虚构示例剧本：
@@ -140,9 +139,6 @@ jubensha/
 │   ├── src/     # 核心源码
 │   ├── docs/    # 文档资料
 │   └── tests/   # 测试代码
-└── frontend/    # 前端界面
-    ├── src/     # 前端源码
-    └── public/  # 静态资源
 ```
 
 ## 🎮 游戏流程
@@ -164,14 +160,6 @@ jubensha/
 - **PostgreSQL** - 关系型数据库
 - **WebSocket** - 实时双向通信
 - **MinIO** - 对象存储服务
-
-### 前端技术栈
-- **Next.js 16** - React框架
-- **React 19** - 前端UI库
-- **TypeScript** - JavaScript超集
-- **Tailwind CSS** - CSS框架
-- **Zustand** - 状态管理
-- **Radix UI** - 无样式组件库
 
 ## 📝 开发计划
 

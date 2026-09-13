@@ -163,24 +163,22 @@ Compiler/模型 Audit 持久任务与工作台已接线，见 `docs/development/
 
 ## 源码与现有边界
 
-- Python `>=3.13,<3.14`，uv锁定依赖；Next/React具体版本看frontend/package.json和锁文件。
+- Python `>=3.13,<3.14`，uv锁定依赖。
 - Fusion：`backend/src/fusion/{rules,service,agents,knowledge,websocket}.py`。
 - 候选导入：`backend/src/fusion/{package_validation,package_import}.py`，严格契约在
   `backend/src/schemas/script_package.py`；导入只存候选，最终确认与发布由独立门禁处理。
 - 来源核验：`backend/src/fusion/source_bundles.py`；私有文件快照与报告，管理员入口
   `/admin/source-bundles`。文件一致不代表语义审核、OCR 校对或人审批准。
-- 审核记录：`backend/src/fusion/script_review.py`、`frontend/src/pages/admin/script-reviews.tsx`；
+- 审核记录：`backend/src/fusion/script_review.py`；
   来源/候选哈希绑定、人工问题处理和完整历史；不会自动生成 Audit 结论或批准发布。
 - 人审发布：`backend/src/fusion/script_publication.py`、审核页下方的最终确认与发布板；完整审核依据哈希绑定确认，登记后形成不可变发布记录。模型建议与人工报告独立，模型不拥有批准权限。
 - 开场预览：`backend/src/fusion/package_runtime.py`、`/play/package-preview`；绑定发布版本和所选角色，仅返回授权开场材料，无 AI 动作或完整试玩。发布后的审核变更会阻止新建开场，需新 `content_version` 重新审核；已有开场保持原版本，旧游戏会话不改写。
 - 阶段演练：`backend/src/fusion/{package_flow,package_flow_rules}.py`、`/play/package-flow`；仅接受 1.0/1.1 包，1.2 明确拒绝。独立创建固定角色演练，仅支持手动推进与授权材料分享，追加事件并按 revision/幂等键防重复；GET 不解锁新权限，不改旧开场或旧游戏。
 - 文字试玩：`backend/src/fusion/{package_play,package_play_rules,package_role_model}.py`、`/play/package-play`；独立会话与多角色公开账本，先预占预算再单次请求，模型只选引用，服务端分享和组装原文。支持手动阶段、材料分享及末阶段指定结尾，未知/过期结果不重发、不新增知识；旧开场/演练不升级。
 - 按预算调查：`backend/src/fusion/{package_play_engine,package_investigation_rules}.py`；按冻结版本白名单选择规则。1.2 的 PERFORM_ACTION 在同一事务扣点、记录动作与授予材料，只展示当前获准且付得起的动作，不暴露隐藏奖励；推进与 SETTLE 均遵守包的预算门槛。结构可达不代表每个真人选角/行动顺序都可完成，内容审核必须另验。
-- 新前端：`frontend/src/pages/play/`、`frontend/src/components/FusionEvidencePanel.tsx`。
 - 后端API鉴权：`backend/src/core/auth_middleware.py`；优先复用统一路径策略与用户依赖。
 - ORM与事务：`backend/src/db/`；不在等待模型时持有数据库行锁，明确flush/commit边界。
 - 旧CharacterAgent、生成/编辑Agent、历史模拟器仅是存量能力，不等于Fusion已经接线。
-- 自动生成客户端 `frontend/src/client/` 不手写；生成命令会访问后端并改文件，不默认执行。
 - 编译任务：`backend/src/fusion/authoring_{sources,model,jobs,runner}.py`、`/admin/authoring-jobs`；HTTP只排队，显式worker才调用模型；每步最多一次，未知结果不重发，模型Audit不创建人工批准。
 - 旧 1.1 包使用 `compiler-draft/1.0`、请求/模型契约 1.1；显式 `package_contract=script-package/1.2` 使用 `compiler-draft/1.1`、请求/模型契约 1.2 与 `script-audit/1.1`。冻结来源、标题、版本和人数均由服务器装配；新增动作/阶段预算有来源引用与审核目标，全量依据继续绑定人审发布。旧任务保留原契约和 Prompt 哈希，不以新版恢复重发。
 - 旧 1.1 真实小合成 Compiler/Audit 链已通过；4D 共享调查与新审核发布链已有工程及隔离验收，但新 1.2 真实编译仍未通过。商业本专属机制、完整运行时、自然对白、提示、主持、完整票制评分和语音仍待完成。
@@ -222,14 +220,7 @@ backend/.venv/bin/python backend/scripts/test_fusion_security.py
 git diff --check
 ```
 
-在frontend目录：
-
-```sh
-node --test tests/fusion-evidence-panel.test.cjs tests/source-bundle-panel.test.cjs tests/script-review-panel.test.cjs tests/authoring-jobs-panel.test.cjs tests/script-publication-panel.test.cjs tests/package-preview-service.test.cjs tests/package-flow-panel.test.cjs tests/package-play-panel.test.cjs
-node node_modules/typescript/bin/tsc --noEmit --incremental false
-```
-
-不要直接自动跑旧全量pytest/conftest，可能初始化真实应用；不要默认执行npm的旧next lint脚本。
+不要直接自动跑旧全量pytest/conftest，可能初始化真实应用。
 迁移后的.venv入口脚本可能有旧shebang，直接用解释器或 `python -m`，不要依赖activate。
 离线测试通过不等于真实PostgreSQL锁、模型质量、语音或整局验收通过。
 每次交接说明修改、验证命令/结果、未测范围和下一步，不以“AI说完成”作为成功证据。

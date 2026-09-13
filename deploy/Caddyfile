@@ -9,7 +9,7 @@
 
     @backend path /api/* /health /static/*
     reverse_proxy @backend backend:8010
-    reverse_proxy frontend:8009
+    # 前端已移除待重建；重建后在此处恢复 reverse_proxy frontend:8009
 
     header {
         X-Content-Type-Options nosniff

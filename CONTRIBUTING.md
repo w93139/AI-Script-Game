@@ -8,7 +8,7 @@
 **规则引擎是阶段、搜证、证据可见性和投票的唯一权威；云模型只生成角色候选发言，
 不能直接修改游戏状态。**
 
-技术栈：FastAPI + Next.js + PostgreSQL。Python 3.13，Node 22。
+技术栈：FastAPI + PostgreSQL。Python 3.13。（前端界面当前已移除，待重建，保留 Next.js）
 
 ## 环境搭建
 
@@ -21,10 +21,9 @@
 backend/.venv/bin/python scripts/local_postgres.py start
 backend/.venv/bin/python scripts/local_redis.py start
 cd backend && ./.venv/bin/python -B main.py        # 后端 127.0.0.1:8010
-cd frontend && npx next dev -p 3001                # 前端 127.0.0.1:3001
 ```
 
-浏览器打开 <http://127.0.0.1:3001/play>。
+后端 API 地址 <http://127.0.0.1:8010>。前端界面已移除待重建。
 
 ## 运行测试
 
@@ -48,24 +47,12 @@ backend/.venv/bin/python -m pytest backend/tests -q
 
 ### 前端
 
-```bash
-cd frontend
-
-# 前端测试
-node --test tests/*.test.cjs
-
-# 类型检查
-node node_modules/typescript/bin/tsc --noEmit --incremental false
-
-# lint
-npx eslint src
-```
+> 前端界面当前已移除，待重建（保留 Next.js 技术栈）。重建后再补充前端测试与类型检查命令。
 
 ## 代码规范
 
 - **Python**：3.13.x，类型标注遵循 `pyrightconfig.json`（不要求 pyright 零错误，
   但新代码应避免引入新的明显类型错误）。
-- **TypeScript / React**：Next.js 16，组件用函数式 + hooks。
 - **不要用粗体（font-weight 700+）**：设计规范上限 590，详见 `DESIGN.md`。
 - **颜色用语义 token**（`bg-ink`、`text-paper`、`text-brass` 等），不要硬编码 hex。
 
@@ -104,9 +91,6 @@ backend/            # FastAPI 后端
   src/schemas/      # 数据契约
   src/db/           # ORM 与迁移
   tests/            # 测试
-frontend/           # Next.js 前端
-  src/components/   # 组件
-  src/pages/play/   # 玩家入口
 docs/               # 开发记录与契约
 ```
 

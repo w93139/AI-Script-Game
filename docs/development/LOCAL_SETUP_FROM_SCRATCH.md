@@ -115,11 +115,9 @@ backend/.venv/bin/python scripts/local_redis.py start
 | `DB_PASSWORD` | 上面生成的 `$DBPW` | |
 | `REDIS_URL` | `redis://127.0.0.1:56379/0` | |
 | `HOST` / `PORT` | `127.0.0.1` / `8010` | |
-| `NEXT_PUBLIC_API_URL` | `http://127.0.0.1:8010` | |
 | `FILE_STORAGE` | `dir` | 用本机目录，不连 MinIO |
 | `ALLOW_ANONYMOUS_ACCESS` | `true` | 开发期免登录，不必先接通短信 |
 | `ENABLE_PAID_MODEL_CALLS` | `false` | 默认不产生任何费用 |
-| `CORS_ORIGINS` | `http://127.0.0.1:3001,http://localhost:3001` | |
 
 云模型 Key 一律留空——本机开发不调用云模型，填 `CHANGE_ME` 之类的占位符
 反而会掩盖"忘了配"的问题。
@@ -140,11 +138,9 @@ cd backend && ./.venv/bin/python -m alembic -c src/db/migrations/alembic.ini upg
 
 ```bash
 cd backend && ./.venv/bin/python -B main.py          # 后端 127.0.0.1:8010
-cd frontend && npx next dev -p 3001                  # 前端 127.0.0.1:3001
 ```
 
-浏览器打开 `http://127.0.0.1:3001/play`。开着访客模式时应直接进入游戏主界面，
-不出现登录页。
+后端 API 地址 `http://127.0.0.1:8010`。前端界面当前已移除待重建，重建后再接入浏览器；访客模式下应能直接进入游戏主界面，不出现登录页。
 
 数据库集成测试（会在沙箱库里创建临时 schema，用完即弃）：
 

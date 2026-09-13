@@ -79,9 +79,6 @@ jubensha/
 │   ├── src/     # Core source code
 │   ├── docs/    # Documentation
 │   └── tests/   # Test code
-└── frontend/    # Frontend interface
-    ├── src/     # Frontend source code
-    └── public/  # Static resources
 ```
 
 ## 🚀 Quick Start
@@ -94,13 +91,9 @@ jubensha/
 - PostgreSQL database
 - At least one AI service API key (OpenAI compatible models, TTS services, image generation services, etc.)
 
-#### Frontend Interface
-- Node.js 18+
-- npm or yarn
-
 ### Configuration and Running
 
-#### 1. Backend Service Configuration and Running
+#### Backend Service Configuration and Running
 
 1. **Enter backend directory**
    ```bash
@@ -136,37 +129,6 @@ jubensha/
    uv run python main.py
    ```
 
-#### 2. Frontend Interface Configuration and Running
-
-1. **Enter frontend directory**
-   ```bash
-   cd frontend
-   ```
-
-2. **Install dependencies**
-   ```bash
-   npm install
-   ```
-
-3. **Configure environment variables**
-   
-   Copy and edit the `.env` file:
-   ```bash
-   test -e .env || cp .env.example .env
-   # Edit the .env file to set backend API address
-   ```
-
-4. **Run frontend development server**
-   ```bash
-   npm run dev
-   ```
-
-5. **Build production version**
-   ```bash
-   npm run build
-   npm run start
-   ```
-
 ## 🎮 Game Flow
 
 1. **Background Introduction Stage** - System narrates the case background story
@@ -186,14 +148,6 @@ jubensha/
 - **PostgreSQL** - Relational database
 - **WebSocket** - Real-time bidirectional communication
 - **MinIO** - Object storage service
-
-### Frontend Technology Stack
-- **Next.js 16** - React framework
-- **React 19** - Frontend UI library
-- **TypeScript** - JavaScript superset
-- **Tailwind CSS** - CSS framework
-- **Zustand** - State management
-- **Radix UI** - Unstyled component library
 
 ## 📝 Development Plan
 

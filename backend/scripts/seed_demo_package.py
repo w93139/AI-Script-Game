@@ -224,7 +224,7 @@ def main(argv: list[str] | None = None) -> int:
         return 3
     import json
     print(json.dumps(result, ensure_ascii=False, sort_keys=True))
-    print("\n完成。现在打开 http://127.0.0.1:3001/play 应能看到这份演示剧本。")
+    print("\n完成。前端重建后打开 http://127.0.0.1:3001/play 应能看到这份演示剧本；当前后端 API 在 http://127.0.0.1:8010。")
     return 0
 
 
