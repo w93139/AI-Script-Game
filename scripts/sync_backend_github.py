@@ -17,7 +17,7 @@ import time
 from typing import Sequence
 
 
-REPOSITORY = "w93139/ai-jubensha-backend"
+REPOSITORY = "hubooooooo/ai-jubensha-backend"
 REMOTE_URL = f"https://github.com/{REPOSITORY}.git"
 MANIFEST = "snapshot-manifest.json"
 SCHEMA = "backend-snapshot/1.0"

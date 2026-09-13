@@ -34,6 +34,6 @@ Ego任务70真实操作：调查步骤生成并保存1条建议，轮次5→6；
 
 本机实际服务已更新，入口仍http://127.0.0.1:18032。最终前端构建`Lmc0jVijTRUdOZtTm7rNA`，manifest SHA `f4b59b1a312c7082240ff705fc37dcdcc7abd672f355cc85e5bf306d5127f06d`。数据库一致备份在验收目录`interaction-feedback-before`；重启前后全部表行一致。最终439条旧事件全部逐行保留，仅本轮建议新增2条事件；冻结终局投影除新计数外逐项相同。新增真实模型调用1，保守费用¥0.01075440；不运行新的完整整局、不声称新触发回忆或语义全过。
 
-后端已同步私有https://github.com/w93139/ai-jubensha-backend，`m3-20260908.3`、提交`441d82e82c072e5a0ee8eeda135d67a18619a5e6`、标签对象`79614be82563ba8c80a4505ab9825ca1c1d74047`；408文件，清单SHA `dbd7dea24b3b130b3b9d5d04c92b77cbd16b0bcabdf5e5afc61a84b5e9953706`，PUSHED_AND_VERIFIED且远端Private复核。原公开origin与旧标签不动，未上传私密配置/商业资料/存档。
+后端已同步私有https://github.com/hubooooooo/ai-jubensha-backend，`m3-20260908.3`、提交`441d82e82c072e5a0ee8eeda135d67a18619a5e6`、标签对象`79614be82563ba8c80a4505ab9825ca1c1d74047`；408文件，清单SHA `dbd7dea24b3b130b3b9d5d04c92b77cbd16b0bcabdf5e5afc61a84b5e9953706`，PUSHED_AND_VERIFIED且远端Private复核。原公开origin与旧标签不动，未上传私密配置/商业资料/存档。
 
 私人验收目录的`interaction-feedback-validation-report.json`记录可复查摘要，`验证流程.md`已重写本轮优先验收项，旧流程另存。停在M3验收，后续先处理用户反馈及既有内容质量问题，提供更新页面与复验流程；尚未进入M4或正式发布。建议下一轮思考强度极高；无待追加授权事项。

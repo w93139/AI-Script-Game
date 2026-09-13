@@ -25,7 +25,7 @@ GitHub同步工具用合成临时 Git 仓库验证白名单、敏感文件拒绝
 
 桌面实际在正文3200px处查看任务/滚动规则后关闭仍为3200px，焦点回任务按钮；390px窗口在2400px处打开任务、回忆、手记，关闭位置和焦点保持，发言框展开后快捷栏位于上方且无横向溢出。完整验证局的5条已解锁回忆可直接查看；新局0回忆空态正确。旧手记仍可读，存储方式未改。
 
-私有仓库：[w93139/ai-jubensha-backend](https://github.com/w93139/ai-jubensha-backend)。最新版本 `m3-20260908.2`，提交 `610a3af3224c7e6b3b6567475bcbb8e755ced54a`，annotated tag对象 `3a474211d34b94b97b6c6c96ceffab923430f34e`；首次 `m3-20260908.1` 保留为父版本。406文件：362后端文件、36 JSON契约及8管理/支持文件。清单摘要 `6bc52dbf5c1a3df2a43fa6e7f2a6db96c6bf50bf9c52db05b4a14c34bb68d102`，GitHub读回与本地完全一致。原工程HEAD和公开origin未变；不导入旧历史、密钥、真实数据和商业材料。
+私有仓库：[hubooooooo/ai-jubensha-backend](https://github.com/hubooooooo/ai-jubensha-backend)。最新版本 `m3-20260908.2`，提交 `610a3af3224c7e6b3b6567475bcbb8e755ced54a`，annotated tag对象 `3a474211d34b94b97b6c6c96ceffab923430f34e`；首次 `m3-20260908.1` 保留为父版本。406文件：362后端文件、36 JSON契约及8管理/支持文件。清单摘要 `6bc52dbf5c1a3df2a43fa6e7f2a6db96c6bf50bf9c52db05b4a14c34bb68d102`，GitHub读回与本地完全一致。原工程HEAD和公开origin未变；不导入旧历史、密钥、真实数据和商业材料。
 
 首次上传成功后的远端读取曾失败，单独读回确认了版本已到达；保留该标签。第二版增加最多3次的读取重试，仅重试 `ls-remote`，不额外push。第二版普通提交及main/tag原子推送后，完整工具返回 `PUSHED_AND_VERIFIED`，再次读取私有属性和远端清单一致。后续同步约定已写入AGENTS，工具说明见 [备份流程](BACKEND_GITHUB_BACKUP.md)。
 

@@ -1,6 +1,6 @@
 # 后端代码版本备份
 
-这是后端工程快照，固定目标为私有 GitHub 仓库 `w93139/ai-jubensha-backend`。
+这是后端工程快照，固定目标为私有 GitHub 仓库 `hubooooooo/ai-jubensha-backend`。
 它不备份数据库、用户进度、商业剧本、OCR、导入任务、模型录制、日志或密钥。
 它也不替代原工程仓库，不改动原有 public `origin`、分支或历史。
 
