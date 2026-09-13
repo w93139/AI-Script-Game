@@ -6,3 +6,7 @@ out/
 .env.development.local
 .env.production.local
 *.tsbuildinfo
+
+# Next.js 自动生成的 agent 说明文件
+AGENTS.md
+CLAUDE.md
