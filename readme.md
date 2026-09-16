@@ -1,111 +1,89 @@
 <div align="center">
 
-# 🎭 人生海海
+# 人生海海 · AI 剧本杀
 
-**单真人 AI 剧本杀** —— 你扮演一个角色，其余角色由 AI 演绎。
+**一个真人，与 AI 角色共同走进故事。**
 
-*AI Script Game · 一人一局，其余交给大模型*
+阅读你的故事，寻找线索，听取不同说法，做出自己的判断。
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.13-3776AB?logo=python&logoColor=white)]()
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.116-009688?logo=fastapi&logoColor=white)]()
-[![Next.js](https://img.shields.io/badge/Next.js-16-000000?logo=nextdotjs&logoColor=white)]()
-[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white)]()
-[![Redis](https://img.shields.io/badge/Redis-7.4-DC382D?logo=redis&logoColor=white)]()
+[项目源码](https://github.com/w93139/AI-Script-Game) · [反馈问题](https://github.com/w93139/AI-Script-Game/issues) · [MIT 许可证](LICENSE)
 
 </div>
 
-## 这是什么
+## 项目介绍
 
-「人生海海」是一款面向浏览器的**单真人 AI 剧本杀**：你选择一名角色（可以是凶手），其余 3–7 名角色由大模型演绎。搜证、盘问、讨论、投票，在深夜的案卷里走完一整局。
+「人生海海」是一款面向浏览器的单人 AI 剧本杀项目。你扮演故事中的一名角色，其余角色由 AI 演绎，通过阅读、调查、公开讨论和单独对话，逐步拼出事件的全貌。
 
-**核心原则：规则引擎是唯一权威。** 阶段推进、搜证、证据可见性与投票都由确定性服务端代码决定；云模型只生成「角色发言」候选，不能直接修改游戏状态、读取私本或越权访问其他角色的材料。
+每个角色都有自己的经历、立场和掌握的信息。你需要判断哪些是亲眼所见，哪些是他人的说法，又有哪些只是推测，最终提交自己的答案，揭开故事真相。
 
-## 特性
+项目希望让一个人也能体验剧本杀中的角色代入、信息交换与推理乐趣，并为 AI 叙事游戏提供可继续开发的开源基础。
 
-- 🎭 **单真人 + AI 配角** —— 真人选角入局，AI 各有人设、秘密与转述义务
-- 🗂️ **三幕流程** —— 阅读 → 调查 → 终局，每幕有清晰目标与可做之事
-- 🔍 **条件线索** —— 证据按阶段、前置条件与角色权限逐层解锁
-- 🔐 **权限隔离** —— 私本、凶手秘密、证据、系统真相按角色严格过滤
-- 💾 **断线续玩** —— 阶段、行动、对话、模型用量全部持久化，可续玩与回看
-- ⚖️ **投票结算** —— 终局投票、封卷、真相揭晓与复盘评分
+## 游戏怎么玩
 
-## 技术栈
+1. **选择故事与角色**：进入故事，了解你的身份和任务。
+2. **阅读角色资料**：掌握自己的经历、人物关系与已知信息。
+3. **调查与交流**：寻找线索，在公开讨论或单独对话中向其他角色提问。
+4. **整理自己的判断**：结合材料和对话，分辨证据、说法与猜测。
+5. **提交答案与复盘**：完成终局选择，查看结局、真相与结果。
 
-| 层 | 技术 |
+具体阶段、调查规则和结局由接入的剧本决定。
+
+## 主要能力
+
+| 能力 | 说明 |
 | --- | --- |
-| 后端 | FastAPI · PostgreSQL · Redis |
-| 前端 | Next.js 16 · React 19 · Tailwind CSS 4（午夜深色主题） |
-| 模型 | 火山方舟 doubao-seed-character（默认） · 阿里百炼 qwen（备用） |
-| 鉴权 | JWT + 手机验证码（开发期支持免登录） |
+| 单人角色体验 | 真人扮演一名角色，AI 承担其余角色的交流与回应 |
+| 分阶段推进 | 围绕阅读、调查、讨论与终局组织游戏流程 |
+| 线索与角色资料 | 根据角色、阶段和解锁条件呈现可查看的信息 |
+| 公开与单独交流 | 在不同交流场景中了解人物立场与线索 |
+| 进度保存 | 保存游戏记录，支持继续游戏与回看 |
+| 终局与复盘 | 提交判断，按剧本规则结算并揭示真相 |
 
-> ⚠️ 角色对白链路只接受**经过白名单与离线契约测试**的火山方舟 / 阿里百炼，不能把「OpenAI 兼容」理解为可任意更换供应商。
+## 设计思路
 
-## 快速开始
+**让规则负责游戏，让 AI 负责角色表达。**
 
-完整步骤见 [从零搭建本机环境](docs/development/LOCAL_SETUP_FROM_SCRATCH.md)（无需 Docker）。
+- **规则决定进度**：阶段推进、调查消耗、线索发放和结算由服务端规则控制。
+- **角色拥有各自的视角**：AI 接收的信息按角色权限与当前进度筛选，角色之间不共享完整剧本。
+- **故事有可追溯的记录**：行动、对话和结算保留记录，便于续玩与复盘。
+- **模型接入有明确范围**：使用项目支持的供应商与模型配置，并对输出进行校验。
 
-```bash
-# 1. 启动本机依赖（PostgreSQL / Redis）
-backend/.venv/bin/python scripts/local_postgres.py start
-backend/.venv/bin/python scripts/local_redis.py start
+## 技术架构
 
-# 2. 启动后端（127.0.0.1:8010）
-cd backend && ./.venv/bin/python -B main.py
+| 部分 | 技术 |
+| --- | --- |
+| 前端 | Next.js · React · TypeScript · Tailwind CSS |
+| 后端 | Python · FastAPI |
+| 数据与缓存 | PostgreSQL · Redis |
+| AI 交互 | 模型适配、角色信息过滤与输出校验 |
 
-# 3. 启动前端（127.0.0.1:3001）
-cd frontend && npm run dev
+```text
+AI-Script-Game/
+├── frontend/   # 浏览器界面与玩家交互
+├── backend/    # 游戏规则、模型接入、接口与数据存储
+├── docs/       # 项目文档与接口契约
+├── scripts/    # 本地开发工具
+└── deploy/     # 部署配置
 ```
 
-浏览器打开 <http://127.0.0.1:3001>。
+## 使用与开发
 
-> 仓库不含任何可玩的剧本正文（商业剧本受版权保护，不得入库）。
-> 开发者可用 `backend/scripts/seed_demo_package.py --allow-paid` 导入一份**虚构示例剧本**（需配置模型 API Key，会产生少量云模型费用）。
+项目目前处于**开发与试玩阶段**，以文字游戏体验为主。AI 回答质量和完整游戏体验仍在完善，尚未正式上线。
 
-## 当前状态
+本地运行需要 Python、Node.js、PostgreSQL 和 Redis。使用真实 AI 对话时，还需要配置项目支持的模型 API；调用费用由相应服务商收取。
 
-| 能力 | 状态 |
-| --- | --- |
-| 本机开发运行 | ✅ 可用 |
-| 单真人 + AI 文字整局 | ⚠️ 可玩，内容尚未导入发布 |
-| 登录（手机验证码） | ⚠️ 代码就绪，未接真实短信供应商 |
-| 开发期免登录 | ✅ `ALLOW_ANONYMOUS_ACCESS=true` |
-| 语音输入 / TTS | ⏸ 未接通 |
-| 正式上线 | ❌ `runtime_ready=false` |
+- [本机服务与环境配置参考（macOS）](docs/development/LOCAL_SETUP_FROM_SCRATCH.md)
+- [本地启动说明](docs/development/LOCAL_DEVELOPMENT.md)
+- [环境变量模板](.env.example)
 
-## 项目结构
+公开仓库提供程序源码，不附带商业剧本正文、受版权保护的图片、模型密钥或个人游戏存档。运行具体故事需要另行准备有权使用的剧本资料，并完成相应配置。
 
-```
-├── backend/     # FastAPI 后端（规则引擎、Fusion 玩法、DB、API）
-│   ├── src/     # 核心源码
-│   ├── scripts/ # 工具脚本（导入、联调、同步、种子数据）
-│   └── tests/   # 测试
-├── frontend/    # Next.js 前端（游戏房间、首页、管理后台）
-├── docs/        # 契约与开发记录
-├── deploy/      # 部署配置
-└── scripts/     # 本机服务与预检
-```
+## 反馈与参与
 
-## 文档
+欢迎通过 [Issues](https://github.com/w93139/AI-Script-Game/issues) 提交体验反馈或功能建议，也欢迎参与开发。
 
-| 想知道什么 | 看这里 |
-| --- | --- |
-| 环境搭建 | [从零搭建本机环境](docs/development/LOCAL_SETUP_FROM_SCRATCH.md) |
-| 启动使用 | [小白本地启动说明](docs/development/LOCAL_DEVELOPMENT.md) |
-| 贡献指南 | [CONTRIBUTING](CONTRIBUTING.md) |
-| 迭代计划 | [迭代方案](迭代方案.md) |
-| 变更记录 | [CHANGELOG](CHANGELOG.md) |
-| 部署 | [ECS 部署](deploy/ECS.md) |
-
-## 安全约定
-
-生产环境启动自检强制以下约束，不合格会**拒绝启动**而不是带病运行：
-
-- `SECRET_KEY` 必须显式设置且足够长
-- 不接受模拟短信、匿名访问、弱数据库口令和对象存储出厂凭据
-- 访问令牌 2 小时、可挂失；登录与验证码均有频次限制
-- 接口说明书与遗留管理接口在生产环境默认不注册
+反馈时请说明：**扮演的角色、进行到哪一步、做了什么操作、预期结果与实际结果**。截图有助于定位界面问题；请隐去密钥和个人信息。
 
 ## 许可证
 
-[MIT](LICENSE)
+项目代码采用 [MIT License](LICENSE)。单独接入的剧本、图片等内容仍遵循各自的版权与授权约定。
