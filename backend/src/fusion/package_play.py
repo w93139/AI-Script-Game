@@ -38,8 +38,9 @@ from src.fusion.package_dialogue_model import PackageDialogueModel, dialogue_met
 from src.fusion.package_dialogue_model import FullPackageDialogueModel, StrategyFullPackageDialogueModel, CatalogFullPackageDialogueModel, ClarifyingFullPackageDialogueModel, dialogue_context_window
 from src.fusion.package_dialogue_model import ExcerptFullPackageDialogueModel, WrappedExcerptFullPackageDialogueModel, PassageFullPackageDialogueModel, CompactPassageFullPackageDialogueModel, TaskPassageFullPackageDialogueModel, FocusedTaskPassageFullPackageDialogueModel, ScopedTaskPackageDialogueModel, scope_retelling_context, refuses_meta_request
 from src.fusion.required_retelling import required_retelling_task
-from src.fusion.package_table_model import (PackageTableModel, BoundPackageTableModel, ReasonedPackageTableModel, EvidencePackageTableModel, LocatedPackageTableModel,
-    TABLE_MODEL_CONTRACTS, REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, validate_evidence_decision, table_metadata, validate_table_decision, table_context_window)
+from src.fusion.package_table_model import (PackageTableModel, BoundPackageTableModel, ReasonedPackageTableModel, EvidencePackageTableModel, LocatedPackageTableModel, ScopedPackageTableModel,
+    TABLE_MODEL_CONTRACTS, REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT, validate_evidence_decision, table_metadata, validate_table_decision, table_context_window)
+from src.fusion.finale_question_scopes import FinaleQuestionScopes, available_scopes, apply_scopes
 from src.fusion.package_call_model import PackageCallModel, StrategyPackageCallModel, CatalogPackageCallModel, ClarifyingPackageCallModel, call_metadata, validate_call, call_window
 from src.fusion.package_call_model import ExcerptPackageCallModel, WrappedExcerptPackageCallModel, PassagePackageCallModel, CompactPassagePackageCallModel, AttributedPackageCallModel
 from src.fusion.package_runtime import PackageRuntimeService, PackageRuntimeError, PublicationReader
@@ -66,6 +67,7 @@ FULL_BINDING_CONTRACT = 'package-text-play-binding/1.2'
 TABLE_BINDING_CONTRACT = 'package-text-play-binding/1.4'
 EVIDENCE_TABLE_BINDING_CONTRACT = 'package-text-play-binding/1.5'
 LOCATED_TABLE_BINDING_CONTRACT = 'package-text-play-binding/1.6'
+SCOPED_TABLE_BINDING_CONTRACT = 'package-text-play-binding/1.7'
 EVENT_CONTRACT = "package-text-play-event/1.0"
 MAX_QUESTIONS = 30
 MAX_STATEMENTS = 100
@@ -166,7 +168,7 @@ class PackagePlayService(FinaleMotivationMixin):
                  speech_policy: str = 'role-speech/1.0', table_policy: str = 'package-table-model/1.0',
                  include_interactions: bool = False, request_scope_policy: str | None = None,
                  presentation_repair=None, guided_content=None, single_player_content=None, single_player_required=None,
-                 finale_policy=None, legacy_table_policy=None):
+                 finale_policy=None, legacy_table_policy=None, finale_question_scopes=None):
         if type(include_interactions) is not bool:
             raise PackagePlayError('PACKAGE_PLAY_VIEW_POLICY_INVALID')
         if request_scope_policy not in (None, REQUEST_SCOPE_POLICY):
@@ -176,6 +178,7 @@ class PackagePlayService(FinaleMotivationMixin):
         self.guided_content = dict(guided_content or {})
         self.single_player_content = dict(single_player_content or {})
         self.single_player_required = dict(single_player_required or {})
+        self.finale_question_scopes = dict(finale_question_scopes or {})
         self.request_scope_policy = request_scope_policy
         self.db = db
         self.runtime = PackageRuntimeService(db, publisher)
@@ -200,7 +203,8 @@ class PackagePlayService(FinaleMotivationMixin):
                        'package-table-model/1.1': BoundPackageTableModel,
                        REASONED_MODEL_CONTRACT: ReasonedPackageTableModel,
                        EVIDENCE_MODEL_CONTRACT: EvidencePackageTableModel,
-                       LOCATED_MODEL_CONTRACT: LocatedPackageTableModel}
+                       LOCATED_MODEL_CONTRACT: LocatedPackageTableModel,
+                       SCOPED_MODEL_CONTRACT: ScopedPackageTableModel}
         table_type = table_types[table_policy]
         self.table_model = table_model if table_model is not None else table_type(
             client=getattr(self.model, 'client', None),
@@ -211,7 +215,7 @@ class PackagePlayService(FinaleMotivationMixin):
         # The deployment must retain its old default explicitly when enabling
         # 1.2; a recorded table event always takes precedence over this fallback.
         self.legacy_table_policy = legacy_table_policy if legacy_table_policy is not None else (
-            self.table_model.model_contract if self.table_model.model_contract not in (REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT) else 'package-table-model/1.0')
+            self.table_model.model_contract if self.table_model.model_contract not in (REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT) else 'package-table-model/1.0')
         if self.legacy_table_policy not in ('package-table-model/1.0', 'package-table-model/1.1'):
             raise PackagePlayError('FULL_PLAY_LEGACY_TABLE_POLICY_INVALID')
         self.full_proposal_model = FullPackageProposalModel(client=getattr(self.model, 'client', None), settings=full_settings)
@@ -313,7 +317,7 @@ class PackagePlayService(FinaleMotivationMixin):
                         or type(full['max_input_bytes']) is not int or not 1024 <= full['max_input_bytes'] <= 98304):
                     raise ValueError
                 expected.update(schema_version=binding['schema_version'], full_input=full)
-                if binding['schema_version'] in (FULL_BINDING_CONTRACT, FINALE_BINDING_CONTRACT, TABLE_BINDING_CONTRACT, EVIDENCE_TABLE_BINDING_CONTRACT, LOCATED_TABLE_BINDING_CONTRACT):
+                if binding['schema_version'] in (FULL_BINDING_CONTRACT, FINALE_BINDING_CONTRACT, TABLE_BINDING_CONTRACT, EVIDENCE_TABLE_BINDING_CONTRACT, LOCATED_TABLE_BINDING_CONTRACT, SCOPED_TABLE_BINDING_CONTRACT):
                     output = binding['full_output']
                     if (set(output) != {'schema_version', 'max_output_tokens'}
                             or output['schema_version'] != 'full-play-table-output-policy/1.0'
@@ -324,15 +328,25 @@ class PackagePlayService(FinaleMotivationMixin):
                         if binding.get('finale_motivation_policy') not in FINALE_MOTIVATION_POLICIES:
                             raise ValueError
                         expected['finale_motivation_policy'] = binding['finale_motivation_policy']
-                    elif binding['schema_version'] in (TABLE_BINDING_CONTRACT, EVIDENCE_TABLE_BINDING_CONTRACT, LOCATED_TABLE_BINDING_CONTRACT):
+                    elif binding['schema_version'] in (TABLE_BINDING_CONTRACT, EVIDENCE_TABLE_BINDING_CONTRACT, LOCATED_TABLE_BINDING_CONTRACT, SCOPED_TABLE_BINDING_CONTRACT):
                         expected_policy = {TABLE_BINDING_CONTRACT: REASONED_MODEL_CONTRACT,
                                            EVIDENCE_TABLE_BINDING_CONTRACT: EVIDENCE_MODEL_CONTRACT,
-                                           LOCATED_TABLE_BINDING_CONTRACT: LOCATED_MODEL_CONTRACT}[binding['schema_version']]
+                                           LOCATED_TABLE_BINDING_CONTRACT: LOCATED_MODEL_CONTRACT,
+                                           SCOPED_TABLE_BINDING_CONTRACT: SCOPED_MODEL_CONTRACT}[binding['schema_version']]
                         if (binding.get('table_policy') != expected_policy
                                 or binding.get('finale_motivation_policy') not in (None, *FINALE_MOTIVATION_POLICIES)):
                             raise ValueError
                         expected.update(table_policy=binding['table_policy'],
                                         finale_motivation_policy=binding['finale_motivation_policy'])
+                        if binding['schema_version'] == SCOPED_TABLE_BINDING_CONTRACT:
+                            snapshots = binding['finale_question_scopes']
+                            if type(snapshots) is not dict:
+                                raise ValueError
+                            for actor, document in snapshots.items():
+                                scope = FinaleQuestionScopes(package, document)
+                                if scope.character_id != actor or scope.freeze() != document:
+                                    raise ValueError
+                            expected['finale_question_scopes'] = snapshots
                 elif binding['schema_version'] != 'package-text-play-binding/1.1':
                     raise ValueError
             if (binding != expected or content_hash(request) != row.request_hash
@@ -374,6 +388,30 @@ class PackagePlayService(FinaleMotivationMixin):
             raise PackagePlayError("PACKAGE_PLAY_KEY_CONFLICT")
         return row
 
+    def _freeze_question_scopes(self, package):
+        """New games snapshot reviewed catalogues; reads never consult this registry."""
+        try:
+            configured = self.finale_question_scopes.get(content_hash(package), {})
+            if type(configured) is not dict:
+                raise ValueError
+            snapshots = {}
+            for actor, catalogue in configured.items():
+                if not isinstance(catalogue, FinaleQuestionScopes):
+                    raise ValueError
+                scope = FinaleQuestionScopes(package, catalogue.freeze())
+                if scope.character_id != actor:
+                    raise ValueError
+                snapshots[actor] = scope.freeze()
+            return snapshots
+        except (ValueError, TypeError, KeyError, AttributeError):
+            raise PackagePlayError('FULL_PLAY_QUESTION_SCOPES_INVALID') from None
+
+    @staticmethod
+    def _bound_question_scopes(binding, actor):
+        if binding.get('schema_version') != SCOPED_TABLE_BINDING_CONTRACT:
+            return []
+        return deepcopy(binding['finale_question_scopes'].get(actor, {}).get('questions', []))
+
     def create(self, body, owner: int) -> dict:
         self._actor(owner)
         request = self._request(body, CreatePackagePlayRequest)
@@ -402,12 +440,15 @@ class PackagePlayService(FinaleMotivationMixin):
                 binding.update(schema_version=FULL_BINDING_CONTRACT, full_input=self.full_input.copy(), full_output=self.full_output.copy())
                 if self.finale_policy is not None:
                     binding.update(schema_version=FINALE_BINDING_CONTRACT, finale_motivation_policy=self.finale_policy)
-                if self.table_model.model_contract in (REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT):
+                if self.table_model.model_contract in (REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT):
                     binding.update(schema_version={REASONED_MODEL_CONTRACT: TABLE_BINDING_CONTRACT,
                                                   EVIDENCE_MODEL_CONTRACT: EVIDENCE_TABLE_BINDING_CONTRACT,
-                                                  LOCATED_MODEL_CONTRACT: LOCATED_TABLE_BINDING_CONTRACT}[self.table_model.model_contract],
+                                                  LOCATED_MODEL_CONTRACT: LOCATED_TABLE_BINDING_CONTRACT,
+                                                  SCOPED_MODEL_CONTRACT: SCOPED_TABLE_BINDING_CONTRACT}[self.table_model.model_contract],
                                    table_policy=self.table_model.model_contract,
                                    finale_motivation_policy=self.finale_policy)
+                    if self.table_model.model_contract == SCOPED_MODEL_CONTRACT:
+                        binding['finale_question_scopes'] = self._freeze_question_scopes(package)
             row = ScriptPackagePlay(**{key: binding[key] for key in (
                 "play_id", "owner_user_id", "opening_session_id", "release_id", "version_id", "package_hash",
                 "selected_character_id", "request_hash")}, idempotency_key=request["idempotency_key"],
@@ -650,7 +691,7 @@ class PackagePlayService(FinaleMotivationMixin):
             if deciding and not calling and (data.get('model') != table_metadata(self._full_table_base(binding), data.get('model', {}).get('schema_version'))
                              or (state.table_model is not None and state.table_model != data['model'])
                              or (binding.get('table_policy') is not None and data['model']['schema_version'] != binding['table_policy'])
-                             or (binding.get('table_policy') is None and data['model']['schema_version'] in (REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT))):
+                             or (binding.get('table_policy') is None and data['model']['schema_version'] in (REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT))):
                 raise ValueError
             if calling and (data.get('model') != call_metadata(self._full_base(binding),data.get('model',{}).get('schema_version'))
                             or (state.phone_model is not None and state.phone_model != data['model'])):
@@ -1014,10 +1055,15 @@ class PackagePlayService(FinaleMotivationMixin):
                 'package_hash': binding['package_hash'], 'revision': state.revision if revision is None else revision,
                 **context, 'discussion': sorted(claims, key=lambda c: c['sequence'])}
         version = version or (state.table_model or {}).get('schema_version') or binding.get('table_policy', 'package-table-model/1.0')
-        if version == LOCATED_MODEL_CONTRACT and action == 'SEAL_FINALE':
+        if version in (LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT) and action == 'SEAL_FINALE':
             from src.fusion.located_evidence import authorized_evidence_origins
             context.update(schema_version='package-table-context/1.2',
                            evidence_origins=authorized_evidence_origins(state.engine, context['materials']))
+            if version == SCOPED_MODEL_CONTRACT:
+                if binding['schema_version'] != SCOPED_TABLE_BINDING_CONTRACT:
+                    raise PlayRulesError('FULL_PLAY_QUESTION_SCOPE_BINDING_INVALID')
+                context.update(schema_version='package-table-context/1.4', question_scopes=available_scopes(
+                    context['questions'], context['materials'], PackagePlayService._bound_question_scopes(binding, character)))
         return table_context_window(context, PackagePlayService._full_base(binding)['max_input_bytes'],
                                     version, provider_model=binding['model'])
 
@@ -1028,7 +1074,8 @@ class PackagePlayService(FinaleMotivationMixin):
                       'package-table-model/1.1': BoundPackageTableModel,
                       REASONED_MODEL_CONTRACT: ReasonedPackageTableModel,
                        EVIDENCE_MODEL_CONTRACT: EvidencePackageTableModel,
-                       LOCATED_MODEL_CONTRACT: LocatedPackageTableModel}.get(policy)
+                       LOCATED_MODEL_CONTRACT: LocatedPackageTableModel,
+                       SCOPED_MODEL_CONTRACT: ScopedPackageTableModel}.get(policy)
         if model_type is None:
             raise PackagePlayError('FULL_PLAY_TABLE_POLICY_INVALID')
         return model_type(client=self.table_model.client, settings=self.table_model.settings)
@@ -1161,6 +1208,13 @@ class PackagePlayService(FinaleMotivationMixin):
 
     def _view(self, row, package: dict, binding: dict, state: Replay) -> dict:
         projection = state.engine.view()
+        if (binding.get('schema_version') == SCOPED_TABLE_BINDING_CONTRACT
+                and isinstance(state.engine, PackageFullPlayRules)
+                and projection['full_game']['finale'] is not None):
+            actor = row.selected_character_id
+            form = projection['full_game']['finale']
+            form['questions'] = apply_scopes(form['questions'], state.engine.proposal_context(actor)['materials'],
+                                            self._bound_question_scopes(binding, actor))
         # Historical bindings retain their frozen response shape.
         if binding.get('finale_motivation_policy') not in FINALE_MOTIVATION_POLICIES:
             old_result = projection.get('full_game', {}).get('result')
@@ -1768,7 +1822,7 @@ class PackagePlayService(FinaleMotivationMixin):
     def _requires_table_evidence(pending):
         return bool(pending and pending.get('operation') == 'DECIDE'
                     and pending.get('action') == 'SEAL_FINALE'
-                    and pending.get('model', {}).get('schema_version') in (EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT))
+                    and pending.get('model', {}).get('schema_version') in (EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT))
 
     def _record_result(self, row, binding, state, request_id, status, refs, usage, proposal=None, speech=None, decision=None, motivation=None, assessment=None):
         accounted = self._account(state.policy, state.pending[request_id]["reservation"], usage)
