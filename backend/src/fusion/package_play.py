@@ -38,8 +38,8 @@ from src.fusion.package_dialogue_model import PackageDialogueModel, dialogue_met
 from src.fusion.package_dialogue_model import FullPackageDialogueModel, StrategyFullPackageDialogueModel, CatalogFullPackageDialogueModel, ClarifyingFullPackageDialogueModel, dialogue_context_window
 from src.fusion.package_dialogue_model import ExcerptFullPackageDialogueModel, WrappedExcerptFullPackageDialogueModel, PassageFullPackageDialogueModel, CompactPassageFullPackageDialogueModel, TaskPassageFullPackageDialogueModel, FocusedTaskPassageFullPackageDialogueModel, ScopedTaskPackageDialogueModel, scope_retelling_context, refuses_meta_request
 from src.fusion.required_retelling import required_retelling_task
-from src.fusion.package_table_model import (PackageTableModel, BoundPackageTableModel, ReasonedPackageTableModel, EvidencePackageTableModel,
-    TABLE_MODEL_CONTRACTS, REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, validate_evidence_decision, table_metadata, validate_table_decision, table_context_window)
+from src.fusion.package_table_model import (PackageTableModel, BoundPackageTableModel, ReasonedPackageTableModel, EvidencePackageTableModel, LocatedPackageTableModel,
+    TABLE_MODEL_CONTRACTS, REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, validate_evidence_decision, table_metadata, validate_table_decision, table_context_window)
 from src.fusion.package_call_model import PackageCallModel, StrategyPackageCallModel, CatalogPackageCallModel, ClarifyingPackageCallModel, call_metadata, validate_call, call_window
 from src.fusion.package_call_model import ExcerptPackageCallModel, WrappedExcerptPackageCallModel, PassagePackageCallModel, CompactPassagePackageCallModel, AttributedPackageCallModel
 from src.fusion.package_runtime import PackageRuntimeService, PackageRuntimeError, PublicationReader
@@ -65,6 +65,7 @@ BINDING_CONTRACT = "package-text-play-binding/1.0"
 FULL_BINDING_CONTRACT = 'package-text-play-binding/1.2'
 TABLE_BINDING_CONTRACT = 'package-text-play-binding/1.4'
 EVIDENCE_TABLE_BINDING_CONTRACT = 'package-text-play-binding/1.5'
+LOCATED_TABLE_BINDING_CONTRACT = 'package-text-play-binding/1.6'
 EVENT_CONTRACT = "package-text-play-event/1.0"
 MAX_QUESTIONS = 30
 MAX_STATEMENTS = 100
@@ -198,7 +199,8 @@ class PackagePlayService(FinaleMotivationMixin):
         table_types = {'package-table-model/1.0': PackageTableModel,
                        'package-table-model/1.1': BoundPackageTableModel,
                        REASONED_MODEL_CONTRACT: ReasonedPackageTableModel,
-                       EVIDENCE_MODEL_CONTRACT: EvidencePackageTableModel}
+                       EVIDENCE_MODEL_CONTRACT: EvidencePackageTableModel,
+                       LOCATED_MODEL_CONTRACT: LocatedPackageTableModel}
         table_type = table_types[table_policy]
         self.table_model = table_model if table_model is not None else table_type(
             client=getattr(self.model, 'client', None),
@@ -209,7 +211,7 @@ class PackagePlayService(FinaleMotivationMixin):
         # The deployment must retain its old default explicitly when enabling
         # 1.2; a recorded table event always takes precedence over this fallback.
         self.legacy_table_policy = legacy_table_policy if legacy_table_policy is not None else (
-            self.table_model.model_contract if self.table_model.model_contract not in (REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT) else 'package-table-model/1.0')
+            self.table_model.model_contract if self.table_model.model_contract not in (REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT) else 'package-table-model/1.0')
         if self.legacy_table_policy not in ('package-table-model/1.0', 'package-table-model/1.1'):
             raise PackagePlayError('FULL_PLAY_LEGACY_TABLE_POLICY_INVALID')
         self.full_proposal_model = FullPackageProposalModel(client=getattr(self.model, 'client', None), settings=full_settings)
@@ -311,7 +313,7 @@ class PackagePlayService(FinaleMotivationMixin):
                         or type(full['max_input_bytes']) is not int or not 1024 <= full['max_input_bytes'] <= 98304):
                     raise ValueError
                 expected.update(schema_version=binding['schema_version'], full_input=full)
-                if binding['schema_version'] in (FULL_BINDING_CONTRACT, FINALE_BINDING_CONTRACT, TABLE_BINDING_CONTRACT, EVIDENCE_TABLE_BINDING_CONTRACT):
+                if binding['schema_version'] in (FULL_BINDING_CONTRACT, FINALE_BINDING_CONTRACT, TABLE_BINDING_CONTRACT, EVIDENCE_TABLE_BINDING_CONTRACT, LOCATED_TABLE_BINDING_CONTRACT):
                     output = binding['full_output']
                     if (set(output) != {'schema_version', 'max_output_tokens'}
                             or output['schema_version'] != 'full-play-table-output-policy/1.0'
@@ -322,8 +324,10 @@ class PackagePlayService(FinaleMotivationMixin):
                         if binding.get('finale_motivation_policy') not in FINALE_MOTIVATION_POLICIES:
                             raise ValueError
                         expected['finale_motivation_policy'] = binding['finale_motivation_policy']
-                    elif binding['schema_version'] in (TABLE_BINDING_CONTRACT, EVIDENCE_TABLE_BINDING_CONTRACT):
-                        expected_policy = EVIDENCE_MODEL_CONTRACT if binding['schema_version'] == EVIDENCE_TABLE_BINDING_CONTRACT else REASONED_MODEL_CONTRACT
+                    elif binding['schema_version'] in (TABLE_BINDING_CONTRACT, EVIDENCE_TABLE_BINDING_CONTRACT, LOCATED_TABLE_BINDING_CONTRACT):
+                        expected_policy = {TABLE_BINDING_CONTRACT: REASONED_MODEL_CONTRACT,
+                                           EVIDENCE_TABLE_BINDING_CONTRACT: EVIDENCE_MODEL_CONTRACT,
+                                           LOCATED_TABLE_BINDING_CONTRACT: LOCATED_MODEL_CONTRACT}[binding['schema_version']]
                         if (binding.get('table_policy') != expected_policy
                                 or binding.get('finale_motivation_policy') not in (None, *FINALE_MOTIVATION_POLICIES)):
                             raise ValueError
@@ -398,8 +402,10 @@ class PackagePlayService(FinaleMotivationMixin):
                 binding.update(schema_version=FULL_BINDING_CONTRACT, full_input=self.full_input.copy(), full_output=self.full_output.copy())
                 if self.finale_policy is not None:
                     binding.update(schema_version=FINALE_BINDING_CONTRACT, finale_motivation_policy=self.finale_policy)
-                if self.table_model.model_contract in (REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT):
-                    binding.update(schema_version=EVIDENCE_TABLE_BINDING_CONTRACT if self.table_model.model_contract == EVIDENCE_MODEL_CONTRACT else TABLE_BINDING_CONTRACT,
+                if self.table_model.model_contract in (REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT):
+                    binding.update(schema_version={REASONED_MODEL_CONTRACT: TABLE_BINDING_CONTRACT,
+                                                  EVIDENCE_MODEL_CONTRACT: EVIDENCE_TABLE_BINDING_CONTRACT,
+                                                  LOCATED_MODEL_CONTRACT: LOCATED_TABLE_BINDING_CONTRACT}[self.table_model.model_contract],
                                    table_policy=self.table_model.model_contract,
                                    finale_motivation_policy=self.finale_policy)
             row = ScriptPackagePlay(**{key: binding[key] for key in (
@@ -644,7 +650,7 @@ class PackagePlayService(FinaleMotivationMixin):
             if deciding and not calling and (data.get('model') != table_metadata(self._full_table_base(binding), data.get('model', {}).get('schema_version'))
                              or (state.table_model is not None and state.table_model != data['model'])
                              or (binding.get('table_policy') is not None and data['model']['schema_version'] != binding['table_policy'])
-                             or (binding.get('table_policy') is None and data['model']['schema_version'] in (REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT))):
+                             or (binding.get('table_policy') is None and data['model']['schema_version'] in (REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT))):
                 raise ValueError
             if calling and (data.get('model') != call_metadata(self._full_base(binding),data.get('model',{}).get('schema_version'))
                             or (state.phone_model is not None and state.phone_model != data['model'])):
@@ -1008,6 +1014,10 @@ class PackagePlayService(FinaleMotivationMixin):
                 'package_hash': binding['package_hash'], 'revision': state.revision if revision is None else revision,
                 **context, 'discussion': sorted(claims, key=lambda c: c['sequence'])}
         version = version or (state.table_model or {}).get('schema_version') or binding.get('table_policy', 'package-table-model/1.0')
+        if version == LOCATED_MODEL_CONTRACT and action == 'SEAL_FINALE':
+            from src.fusion.located_evidence import authorized_evidence_origins
+            context.update(schema_version='package-table-context/1.2',
+                           evidence_origins=authorized_evidence_origins(state.engine, context['materials']))
         return table_context_window(context, PackagePlayService._full_base(binding)['max_input_bytes'],
                                     version, provider_model=binding['model'])
 
@@ -1017,7 +1027,8 @@ class PackagePlayService(FinaleMotivationMixin):
         model_type = {'package-table-model/1.0': PackageTableModel,
                       'package-table-model/1.1': BoundPackageTableModel,
                       REASONED_MODEL_CONTRACT: ReasonedPackageTableModel,
-                       EVIDENCE_MODEL_CONTRACT: EvidencePackageTableModel}.get(policy)
+                       EVIDENCE_MODEL_CONTRACT: EvidencePackageTableModel,
+                       LOCATED_MODEL_CONTRACT: LocatedPackageTableModel}.get(policy)
         if model_type is None:
             raise PackagePlayError('FULL_PLAY_TABLE_POLICY_INVALID')
         return model_type(client=self.table_model.client, settings=self.table_model.settings)
@@ -1757,7 +1768,7 @@ class PackagePlayService(FinaleMotivationMixin):
     def _requires_table_evidence(pending):
         return bool(pending and pending.get('operation') == 'DECIDE'
                     and pending.get('action') == 'SEAL_FINALE'
-                    and pending.get('model', {}).get('schema_version') == EVIDENCE_MODEL_CONTRACT)
+                    and pending.get('model', {}).get('schema_version') in (EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT))
 
     def _record_result(self, row, binding, state, request_id, status, refs, usage, proposal=None, speech=None, decision=None, motivation=None, assessment=None):
         accounted = self._account(state.policy, state.pending[request_id]["reservation"], usage)
