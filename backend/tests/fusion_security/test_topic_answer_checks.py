@@ -5,6 +5,7 @@ from copy import deepcopy
 import pytest
 
 from src.fusion.topic_answer_checks import validate_topic_answer, validate_contract, freeze_contract
+from src.fusion.topic_answer_checks import QUESTION_VERSION
 from src.fusion.package_play_rules import PlayRulesError
 from src.fusion.package_single_player import SinglePlayerContent
 from src.fusion.package_validation import content_hash
@@ -30,6 +31,49 @@ def speech(text, basis=None):
 def test_public_evidence_cannot_become_personal_observation(text):
     with pytest.raises(PlayRulesError,match='PUBLIC_IS_NOT_PERSONAL'):
         validate_topic_answer(speech(text),{'answer_contract':contract()})
+
+
+@pytest.mark.parametrize('text', [
+    '我丢了钥匙，正想问大家谁看见了。',
+    '我想问有谁看到钥匙了？',
+    '我想询问一下各位有没有人见过钥匙。',
+])
+def test_new_contract_distinguishes_asking_a_witness_from_claiming_to_be_one(text):
+    validate_topic_answer(speech(text), {'answer_contract': contract(schema_version=QUESTION_VERSION)})
+    for version in ('topic-answer-check/1.0', 'topic-answer-check/1.1', 'topic-answer-check/1.2'):
+        with pytest.raises(PlayRulesError, match='PUBLIC_IS_NOT_PERSONAL'):
+            validate_topic_answer(speech(text), {'answer_contract': contract(schema_version=version)})
+
+
+@pytest.mark.parametrize('text', [
+    '我刚才亲眼看到钥匙在桌上。',
+    '我发现自己的钥匙不见了。',
+    '我想问谁看到钥匙了。我亲眼看到他拿走钥匙。',
+    '我想问谁看到钥匙了，但我亲眼看到他拿走钥匙。',
+    '我想问谁看到钥匙了，但后来亲眼看到他拿走钥匙。',
+    '我想问谁看到钥匙了。后来亲眼看到他拿走钥匙。',
+    '我想问谁看到钥匙了；后来亲眼看到他拿走钥匙。',
+    '我想问大家，谁拿了钥匙？我看到他在桌边。',
+])
+def test_witness_question_exception_does_not_accept_unsupported_observations(text):
+    with pytest.raises(PlayRulesError, match='PUBLIC_IS_NOT_PERSONAL'):
+        validate_topic_answer(speech(text), {'answer_contract': contract(schema_version=QUESTION_VERSION)})
+
+
+def test_new_witness_question_contract_preserves_other_source_and_disclosure_checks():
+    materials = {('knowledge', 'own-book'): {'text': '我记得钥匙放在柜子里。'}}
+    authored = {'schema_version': QUESTION_VERSION, 'forbidden_terms': ['暗门'],
+                'conditional_basis': [{'when_any': ['柜子'], 'requires': [
+                    {'collection': 'knowledge', 'id': 'own-book', 'passage_ids': ['p0001']}]}]}
+    validate_contract(authored, materials, {'initial'})
+    frozen = freeze_contract(authored, 'initial', [])
+    with pytest.raises(PlayRulesError, match='BASIS_INCOMPLETE'):
+        validate_topic_answer(speech('我想问谁看到柜子了？'), {'answer_contract': frozen})
+    with pytest.raises(PlayRulesError, match='DISCLOSURE_FORBIDDEN'):
+        validate_topic_answer(speech('我想问谁看到暗门了？'), {'answer_contract': frozen})
+    with pytest.raises(PlayRulesError, match='CERTAINTY_UNSUPPORTED'):
+        validate_topic_answer(speech('我想问谁看到了？一定是他。'),
+                              {'answer_contract': contract(schema_version=QUESTION_VERSION)})
 
 
 @pytest.mark.parametrize('text', [

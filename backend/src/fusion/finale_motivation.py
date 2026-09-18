@@ -11,6 +11,7 @@ from src.fusion.context_window import bounded_context
 from src.fusion.package_dialogue_model import (
     FINALE_MOTIVATION_POLICY, FINALE_MOTIVATION_POLICIES, FinaleMotivationModel, finale_motivation_metadata,
     validate_finale_motivation, finale_motivation_input_size,
+    _finale_context_policy,
 )
 from src.fusion.package_full_play_rules import PackageFullPlayRules
 from src.fusion.package_guided_flow import valid_hash
@@ -48,6 +49,14 @@ class FinaleMotivationMixin:
             settings=replace(full_settings, max_output_tokens=OUTPUT_TOKENS) if full_settings else None,
             policy=policy or FINALE_MOTIVATION_POLICY)
 
+    def _finale_model_for_policy(self, policy):
+        # A newer default only affects newly created bindings. Keep the current
+        # provider/settings checks while preparing and dispatching an old game.
+        if policy == self.finale_model.policy:
+            return self.finale_model
+        return FinaleMotivationModel(client=self.finale_model.client,
+                                     settings=self.finale_model.settings, policy=policy)
+
     @staticmethod
     def _finale_event_count(state):
         if not state.finale_speeches:
@@ -80,19 +89,21 @@ class FinaleMotivationMixin:
             'package_hash': binding['package_hash'], 'revision': state.revision if revision is None else revision,
             'character': source['character'], 'current_phase': source['current_phase'],
             'materials': public, 'discussion': sorted(claims, key=lambda c: c['sequence'])}
-        if binding['finale_motivation_policy'] == 'finale-motivation/1.1':
-            context['schema_version'] = 'finale-motivation-context/1.1'
+        if binding['finale_motivation_policy'] in ('finale-motivation/1.1', 'finale-motivation/1.2', 'finale-motivation/1.3', 'finale-motivation/1.4'):
+            context['schema_version'] = binding['finale_motivation_policy'].replace('finale-motivation/', 'finale-motivation-context/')
             completed = state.engine.state()['completed_action_ids']
             actions = {a['id']: a['label'] for a in state.engine._package['mechanics']['actions'] if a['id'] in completed}
             visible = {m['id'] for m in public if m['collection'] == 'evidence'}
             context['evidence_origins'] = [{'id':m['id'], 'labels':[actions[a] for a in m['release'].get('required_action_ids', []) if a in actions]}
                 for m in state.engine._package['evidence'] if m['id'] in visible]
-        return bounded_context(context, binding['full_input']['max_input_bytes'], finale_motivation_input_size)
+        return bounded_context(context, binding['full_input']['max_input_bytes'],
+            lambda value: finale_motivation_input_size(value, binding['model']))
 
     def _finale_reason(self, binding):
+        model = self._finale_model_for_policy(binding['finale_motivation_policy'])
         return (self._model_reason(binding)
-                or ('CONFIG_CHANGED' if self.finale_model.metadata() != finale_motivation_metadata(self._finale_base(binding), binding['finale_motivation_policy']) else None)
-                or (None if self.finale_model.available else 'MODEL_UNAVAILABLE'))
+                or ('CONFIG_CHANGED' if model.metadata() != finale_motivation_metadata(self._finale_base(binding), binding['finale_motivation_policy']) else None)
+                or (None if self.finale_model.available and model.available else 'MODEL_UNAVAILABLE'))
 
     def _start_finale_motivation(self, row, binding, state):
         if (binding.get('finale_motivation_policy') not in FINALE_MOTIVATION_POLICIES
@@ -201,10 +212,11 @@ class FinaleMotivationMixin:
                   'QUESTION_LIMIT' if state.questions >= self._question_limit(state) else
                   None)
         prepared = None
+        model = self._finale_model_for_policy(binding['finale_motivation_policy'])
         if reason is None:
             try:
                 context = self._finale_context(state, binding, actor)
-                prepared = self.finale_model.prepare(context)
+                prepared = model.prepare(context)
             except (PackageRoleModelError, ValueError):
                 reason = 'INPUT_UNAVAILABLE'
         if prepared is not None:
@@ -220,7 +232,7 @@ class FinaleMotivationMixin:
         issued = int(self.now())
         self._append(row, binding, state, 'AI_REQUEST', request, {
             'context_hash': content_hash(context), 'prepared_hash': content_hash(prepared),
-            'reservation': reserved.to_metadata(), 'model': self.finale_model.metadata(),
+            'reservation': reserved.to_metadata(), 'model': model.metadata(),
             'issued_at': issued, 'expires_at': issued + min(300, max(10, int(binding['model'].get('timeout_seconds', 25)) + 15))})
         self.db.commit()
         return key, prepared
@@ -237,7 +249,9 @@ class FinaleMotivationMixin:
                     view = first
                 else:
                     try:
-                        result = await self.finale_model.call(prepared)
+                        context = self.finale_model._prepared_payload(prepared)['context']
+                        model = self._finale_model_for_policy(_finale_context_policy(context))
+                        result = await model.call(prepared)
                     except asyncio.CancelledError:
                         self._finish(identifier, first, owner, None)
                         raise

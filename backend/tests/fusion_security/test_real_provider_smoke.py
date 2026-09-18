@@ -106,7 +106,7 @@ def test_non_allowlisted_endpoint_or_model_is_refused_before_client_creation(
     assert caught.value.code == code
 
 
-@pytest.mark.parametrize("provider", ["volcengine_ark", "aliyun_bailian"])
+@pytest.mark.parametrize("provider", ["volcengine_ark", "aliyun_bailian", "ant_digital"])
 def test_success_is_one_call_and_receipt_never_contains_prompt_response_or_keys(tmp_path, provider):
     config = _config(tmp_path, provider)
     calls = []

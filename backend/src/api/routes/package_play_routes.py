@@ -21,7 +21,7 @@ router = APIRouter(prefix="/api/fusion", tags=["角色材料问答与结尾"])
 def play_service(actor: User = Depends(active_user), db: Session = Depends(get_db_session)) -> PackagePlayService:
     return PackagePlayService(db, speech_policy='role-speech/1.10', table_policy='package-table-model/1.1',
                               include_interactions=True, request_scope_policy='package-request-scope/1.0',
-                              finale_policy='finale-motivation/1.1')
+                              finale_policy='finale-motivation/1.2')
 
 
 def _fail(exc: PackagePlayError) -> NoReturn:

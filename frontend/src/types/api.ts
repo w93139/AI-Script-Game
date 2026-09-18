@@ -15,7 +15,7 @@ export interface ReleaseCharacter {
 
 export interface Release {
   id: number;
-  version_id: string;
+  version_id: number;
   title: string;
   content_version: string;
   player_count: number;
@@ -24,120 +24,25 @@ export interface Release {
   status: string;
 }
 
-export interface Material {
-  id: string;
-  text?: string;
-  disclosure?: string;
-  kind?: string;
-}
-
-export interface OpeningSession {
-  session_id: string;
-  release_id: number;
-  version_id: string;
-  selected_character_id: string;
-  status: string;
-  script: { title: string; content_version: string; player_count: number };
-  characters: ReleaseCharacter[];
-  introduction: { text: string };
-  initial_phase: { id: string; title: string };
-  public_knowledge: Material[];
-  private_knowledge: Material[];
-  public_evidence: Material[];
-  private_evidence: Material[];
-  [key: string]: unknown;
-}
-
-export interface DiscussionEntry {
-  id: string;
-  sequence: number;
-  phase_id: string;
-  kind: string;
-  speaker: string;
-  text: string;
-}
-
-export interface AvailableAction {
-  id: string;
-  label: string;
-  cost: number;
-}
-
-export interface DialogueEntry {
-  speaker: string;
-  text: string;
-  self?: boolean;
-}
-
-export interface PlayView {
-  play_id: string;
-  status: "TEXT_PLAY" | "SETTLED";
-  settled: boolean;
-  revision?: number;
-  script?: { title: string };
-  characters?: { id: string; name: string }[];
-  selected_character_id?: string;
-  can_advance?: boolean;
-  selected_character?: { id: string; name: string } | null;
-  phase?: { id: string; title: string } | null;
-  public_knowledge?: Material[];
-  private_knowledge?: Material[];
-  public_evidence?: Material[];
-  private_evidence?: Material[];
-  settlement?: { text: string; truths: { id: string; text: string }[] } | null;
-  dialogue?: DialogueEntry[];
-  discussion?: { entries: DiscussionEntry[] };
-  model?: { available: boolean; reason?: string } | null;
-  pending_ai?: unknown;
-  last_ai_status?: string | null;
-  mechanics?: {
-    initial_points: number;
-    remaining_points: number;
-    spent_points: number;
-    can_finish_phase: boolean;
-    available_actions: AvailableAction[];
-  };
-  memories?: { id: string; title: string; text?: string }[];
-  [key: string]: unknown;
-}
+export type { PackagePlay as PlayView, PlayMaterial as Material,
+  CreatePackagePlayRequest as CreatePlayBody, PackagePlayActionRequest as ActionBody,
+  PackagePlayAskRequest as AskBody, PackagePlaySpeakRequest as SpeakBody } from './packagePlay';
 
 export interface CreateSessionBody {
   release_id: number;
   character_id: string;
   idempotency_key: string;
 }
-
-export interface CreatePlayBody {
-  opening_session_id: string;
-  idempotency_key: string;
-}
-
-export type PlayActionName =
-  | "ADVANCE_PHASE"
-  | "SHARE_MATERIAL"
-  | "SETTLE"
-  | "PERFORM_ACTION";
-
-export interface ActionBody {
-  expected_revision: number;
-  idempotency_key: string;
-  action: PlayActionName;
-  target?: { collection?: string; id?: string; action_id?: string } | null;
-}
-
-export interface AskBody {
-  expected_revision: number;
-  idempotency_key: string;
-  character_id: string;
-  question: string;
-}
-
-export interface SpeakBody {
-  schema_version: string;
-  action: "SPEAK";
-  expected_revision: number;
-  idempotency_key: string;
-  text: string;
+export interface OpeningSession {
+  session_id: string; release_id: number; version_id: number; selected_character_id: string;
+  status: string; script: { title: string; content_version: string; player_count: number };
+  characters: ReleaseCharacter[]; introduction: { text: string }; initial_phase: { id: string; title: string };
+  public_knowledge: import('./packagePlay').PlayMaterial[];
+  private_knowledge: import('./packagePlay').PlayMaterial[];
+  public_evidence: import('./packagePlay').PlayMaterial[];
+  private_evidence: import('./packagePlay').PlayMaterial[];
+  reading_supplements?: { id: string; text: string }[];
+  visuals?: import('../services/playAssets').AuthorizedVisual[];
 }
 
 export interface LibraryItem {

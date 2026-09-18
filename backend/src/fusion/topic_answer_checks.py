@@ -14,6 +14,11 @@ from src.fusion.speech_passages import source_passages
 VERSION = 'topic-answer-check/1.0'
 BASIS_VERSION = 'topic-answer-check/1.1'
 DISCLOSURE_VERSION = 'topic-answer-check/1.2'
+QUESTION_VERSION = 'topic-answer-check/1.3'
+NEGATION_VERSION = 'topic-answer-check/1.4'
+BASIS_VERSIONS = (BASIS_VERSION, DISCLOSURE_VERSION, QUESTION_VERSION, NEGATION_VERSION)
+DISCLOSURE_VERSIONS = (DISCLOSURE_VERSION, QUESTION_VERSION, NEGATION_VERSION)
+VERSIONS = (VERSION, *BASIS_VERSIONS)
 DISCLOSURE_GUIDANCE = (
     'forbidden_terms是本题明确禁止披露的细节线索，公开和私聊同样适用。'
     '不要提及这些细节，也不要改用代称、否定句、反问或动作暗示来透露同一秘密。'
@@ -35,13 +40,13 @@ def normalized(text):
 def validate_contract(contract, materials, intent_ids):
     require(type(contract) is dict)
     version = contract.get('schema_version')
-    require(version in (VERSION, BASIS_VERSION, DISCLOSURE_VERSION)
+    require(version in VERSIONS
             and set(contract) <= {'schema_version','required_terms','reported_passages','conditional_terms',
                                  'reject_public_personal_observation','reject_unsupported_certainty',
                                  'public_document_basis'}
-            | ({'conditional_basis'} if version in (BASIS_VERSION, DISCLOSURE_VERSION) else set())
-            | ({'forbidden_terms'} if version == DISCLOSURE_VERSION else set()))
-    if version == DISCLOSURE_VERSION:
+            | ({'conditional_basis'} if version in BASIS_VERSIONS else set())
+            | ({'forbidden_terms'} if version in DISCLOSURE_VERSIONS else set()))
+    if version in DISCLOSURE_VERSIONS:
         terms = contract.get('forbidden_terms', [])
         require(type(terms) is list and len(terms) <= 32
                 and all(safe_text(term, 80) and normalized(term) for term in terms))
@@ -71,7 +76,7 @@ def validate_contract(contract, materials, intent_ids):
         for key in ('when_any','requires_any'):
             require(type(condition[key]) is list and 1 <= len(condition[key]) <= 16
                     and all(safe_text(t,80) for t in condition[key]))
-    if version in (BASIS_VERSION, DISCLOSURE_VERSION):
+    if version in BASIS_VERSIONS:
         validate_conditional_basis(contract.get('conditional_basis', []), materials)
 
 
@@ -129,8 +134,16 @@ def document_reading(prefix, suffix):
     return bool(re.match(r'了?' + lead + document + attribution, suffix))
 
 
-def personal_observation(text, *, allow_document_reading=False):
+def personal_observation(text, *, allow_document_reading=False, allow_witness_question=False):
     for match in re.finditer(r'我(?:们)?([^。！？；\n]{0,18}?)(?:看见|看到|见到|见过|发现|目睹)', text):
+        # Opt in only for new topic contracts. In "I ask who saw it", the
+        # observer is the questioned person, not the speaker. Continue scanning
+        # so a later first-person assertion is still checked independently.
+        if allow_witness_question and re.search(
+                r'(?:问|询问)(?:一下)?(?:大家|各位)?(?:谁|有谁|有没有人|是否有人)$', match.group(1)):
+            remainder = text[match.end():]
+            if not re.search(r'看见|看到|见到|见过|发现|目睹', remainder):
+                continue
         if re.search(r'听说|据说|听.{0,8}说|转述|告诉', match.group(1)):
             continue
         if allow_document_reading and document_reading(match.group(1),text[match.end():]):
@@ -139,7 +152,21 @@ def personal_observation(text, *, allow_document_reading=False):
     return False
 
 
-def asserted_certainty(text):
+# A deliberately finite noun-phrase grammar, not a general Chinese scope parser.
+# In particular, transitions, another first-person clause and nested negations
+# cannot fit inside the subject. Keep this opt-in so old event checks are stable.
+_SCOPED_CERTAINTY_NEGATION = re.compile(
+    r'(?:目前|现在|暂时)?(?:我|我们)?(?:也|还|目前|现在|暂时|仍然|仍){0,2}'
+    r'(?:不能|无法)(?:证明|确认|认定|断定)'
+    r'(?:这|那|此事|这件事|那件事|这一点|那一点|他|她|它|他们|她们|'
+    r'(?:(?:这|那)(?:个|件|些|条|份|张|只|枚|块|次|笔|把)?|'
+    r'(?:里面|外面|现场|柜子里|柜里|袋子里|袋里|箱子里|箱里|房间里|其中|这里|那里|当时|之前|之后|他|她|它)的)?'
+    r'(?:钱|硬币|物品|东西|钥匙|人|说法|证词|线索|痕迹|伤痕|伤口|弹壳|声音|记录|'
+    r'关联|关系|原因|死因|死亡地点|发现地点|事情|情况|事实|物件|袋子|包|箱子|柜子|铃声|时间|地点))'
+)
+
+
+def asserted_certainty(text, *, allow_scoped_negation=False):
     # Preserve explicit uncertainty; inspect every later assertion separately.
     negatives = ('不','不能','无法','难以','未能','未必','并非','不是','不能说','不能说这',
                  '不能说这就','无法说','不能认为','不能认定','没有证据说明','没有依据说')
@@ -147,6 +174,11 @@ def asserted_certainty(text):
         prefix = re.split(r'[。！？；，\n]', text[:match.start()])[-1].rstrip()
         if prefix.endswith(('不能不','不得不','并非不','不是不')):
             return True
+        if allow_scoped_negation:
+            if re.search(r'(?:不是|并非|并不是)(?:不能|无法|难以|未能)$', prefix):
+                return True
+            if _SCOPED_CERTAINTY_NEGATION.fullmatch(prefix):
+                continue
         if not prefix.endswith(negatives):
             return True
     return False
@@ -156,11 +188,11 @@ def validate_topic_answer(speech, turn):
     contract = turn.get('answer_contract') if turn else None
     if contract is None:
         return
-    if contract.get('schema_version') not in (VERSION, BASIS_VERSION, DISCLOSURE_VERSION):
+    if contract.get('schema_version') not in VERSIONS:
         raise PlayRulesError('SINGLE_TOPIC_ANSWER_CONTRACT_INVALID')
     text = '\n'.join(s.get('text') or '' for s in speech['segments'])
     plain = normalized(text)
-    if contract['schema_version'] == DISCLOSURE_VERSION:
+    if contract['schema_version'] in DISCLOSURE_VERSIONS:
         if any(normalized(term) in plain for term in contract.get('forbidden_terms', [])):
             raise PlayRulesError('SINGLE_TOPIC_DISCLOSURE_FORBIDDEN')
     if any(not any(normalized(term) in plain for term in group) for group in contract.get('required_terms', [])):
@@ -170,18 +202,20 @@ def validate_topic_answer(speech, turn):
     reported = {(r['collection'],r['id']):set(r['passage_ids']) for r in contract.get('reported_passages', [])}
     for segment in speech['segments']:
         value = segment.get('text') or ''
-        if contract['schema_version'] in (BASIS_VERSION, DISCLOSURE_VERSION):
+        if contract['schema_version'] in BASIS_VERSIONS:
             validate_segment_basis(segment, contract.get('conditional_basis', []))
-        if contract.get('reject_unsupported_certainty') and asserted_certainty(value):
+        if contract.get('reject_unsupported_certainty') and asserted_certainty(value,
+                allow_scoped_negation=contract['schema_version'] == NEGATION_VERSION):
             raise PlayRulesError('SINGLE_TOPIC_CERTAINTY_UNSUPPORTED')
         for rule in contract.get('conditional_terms', []):
             if any(t in value for t in rule['when_any']) and not any(t in value for t in rule['requires_any']):
                 raise PlayRulesError('SINGLE_TOPIC_QUALIFIER_REQUIRED')
-        if personal_observation(value):
+        observation_options = {'allow_witness_question': contract['schema_version'] in (QUESTION_VERSION, NEGATION_VERSION)}
+        if personal_observation(value, **observation_options):
             for basis in segment['basis']:
                 key = (basis['collection'],basis['id'])
                 if (contract.get('reject_public_personal_observation') and key in public
-                        and personal_observation(value, allow_document_reading=key in documents)):
+                        and personal_observation(value, allow_document_reading=key in documents, **observation_options)):
                     raise PlayRulesError('SINGLE_TOPIC_PUBLIC_IS_NOT_PERSONAL')
                 if key in reported and (not basis.get('passage_ids') or reported[key] & set(basis['passage_ids'])):
                     raise PlayRulesError('SINGLE_TOPIC_REPORT_IS_NOT_PERSONAL')

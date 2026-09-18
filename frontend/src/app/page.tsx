@@ -1,40 +1,81 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, FileText, History, Play } from "lucide-react";
-import { anonymousLogin, saveToken } from "@/services/auth";
+import { currentToken, ensureSession } from "@/services/auth";
 import { listLibrary, listReleases } from "@/services/play";
+import { errorCode } from "@/lib/http";
 import type { LibraryItem, Release } from "@/types/api";
 
 export default function HomePage() {
   const [recent, setRecent] = useState<LibraryItem | null>(null);
   const [releases, setReleases] = useState<Release[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [libraryError, setLibraryError] = useState<string | null>(null);
+  const [releaseError, setReleaseError] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
+  const requestVersion = useRef(0);
+  const identityToken = useRef<string | null>(null);
 
   useEffect(() => {
-    let cancelled = false;
+    const version = ++requestVersion.current;
     (async () => {
       try {
-        const token = await anonymousLogin();
-        saveToken(token);
-        const [lib, rels] = await Promise.all([
+        if (identityToken.current && !currentToken()) throw new Error("登录身份已变化，请重新登录后载入。");
+        await ensureSession();
+        if (requestVersion.current !== version) return;
+        const token = currentToken();
+        identityToken.current = token;
+        const [lib, rels] = await Promise.allSettled([
           listLibrary(0, 1),
           listReleases(),
         ]);
-        if (!cancelled) {
-          setRecent(lib.items[0] ?? null);
-          setReleases(rels);
+        if (currentToken() !== token) throw new Error("登录身份已变化，请重新加载。");
+        if (requestVersion.current === version) {
+          if (lib.status === "fulfilled") setRecent(lib.value.items[0] ?? null);
+          else setLibraryError(errorCode(lib.reason));
+          if (rels.status === "fulfilled") setReleases(rels.value);
+          else setReleaseError(errorCode(rels.reason));
         }
-      } catch {
-        // 离线：保持占位状态
+      } catch (error) {
+        if (requestVersion.current === version) {
+          setLibraryError(errorCode(error));
+          setReleaseError(errorCode(error));
+        }
+      } finally {
+        if (requestVersion.current === version) setLoading(false);
       }
     })();
     return () => {
-      cancelled = true;
+      requestVersion.current += 1;
+    };
+  }, [refresh]);
+
+  useEffect(() => {
+    const checkIdentity = () => {
+      if (!identityToken.current || currentToken() === identityToken.current) return;
+      requestVersion.current += 1;
+      setRecent(null);
+      setReleases([]);
+      setLoading(false);
+      setLibraryError("登录身份已变化，请重新加载当前账号的记录。");
+      setReleaseError("登录身份已变化，请重新加载。");
+    };
+    window.addEventListener("storage", checkIdentity);
+    window.addEventListener("focus", checkIdentity);
+    return () => {
+      window.removeEventListener("storage", checkIdentity);
+      window.removeEventListener("focus", checkIdentity);
     };
   }, []);
 
-  const hasScript = releases.length > 0;
+  function reload() {
+    setLoading(true);
+    setLibraryError(null);
+    setReleaseError(null);
+    setRefresh((value) => value + 1);
+  }
 
   return (
     <div className="min-h-screen">
@@ -77,7 +118,7 @@ export default function HomePage() {
             className="inline-flex items-center justify-center gap-2 rounded-md bg-acid-lime px-4 py-2.5 text-[14px] font-medium tracking-[-0.011em] text-void transition-opacity hover:opacity-90"
           >
             <Play size={16} strokeWidth={2} />
-            {hasScript ? "开始新游戏" : "进入游戏（离线演示）"}
+            开始新游戏
           </Link>
           <Link
             href="/records"
@@ -87,6 +128,16 @@ export default function HomePage() {
             我的记录
           </Link>
         </div>
+        {!loading && releaseError ? (
+          <div className="mt-4 text-[13px] text-ash" role="alert">
+            <p>剧本列表加载失败：{releaseError}</p>
+            <button type="button" onClick={reload} className="mt-2 text-acid-lime hover:underline">
+              重新加载
+            </button>
+          </div>
+        ) : !loading && releases.length === 0 ? (
+          <p className="mt-4 text-[13px] text-ash">暂时没有可开始的剧本，请稍后再试。</p>
+        ) : null}
       </main>
 
       {/* 最近一局 */}
@@ -96,9 +147,18 @@ export default function HomePage() {
             <FileText size={14} strokeWidth={2} />
             最近一局
           </div>
-          {recent ? (
-            <div className="mt-4 flex items-center justify-between">
-              <div>
+          {loading ? (
+            <p className="mt-4 text-[13px] text-fog" role="status">正在读取最近一局…</p>
+          ) : libraryError ? (
+            <div className="mt-4 text-[13px] text-ash" role="alert">
+              <p>记录加载失败：{libraryError}</p>
+              <button type="button" onClick={reload} className="mt-2 text-acid-lime hover:underline">
+                重新加载
+              </button>
+            </div>
+          ) : recent ? (
+            <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
+              <div className="min-w-0 break-words">
                 <div className="text-[16px] font-medium text-paper">
                   {recent.title} · {recent.character_name}
                 </div>
@@ -108,10 +168,10 @@ export default function HomePage() {
                 </div>
               </div>
               <Link
-                href={`/play?play_id=${recent.play_id}`}
-                className="inline-flex items-center gap-1 text-[13px] text-acid-lime transition-opacity hover:opacity-80"
+                href={`/play?play_id=${encodeURIComponent(recent.play_id)}`}
+                className="inline-flex shrink-0 items-center gap-1 text-[13px] text-acid-lime transition-opacity hover:opacity-80"
               >
-                继续 <ArrowRight size={13} strokeWidth={2} />
+                {recent.settled ? "查看结局" : "继续"} <ArrowRight size={13} strokeWidth={2} />
               </Link>
             </div>
           ) : (

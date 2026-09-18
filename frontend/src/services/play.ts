@@ -1,4 +1,5 @@
 import { http } from "@/lib/http";
+import { currentToken } from './auth';
 import type {
   ActionBody,
   AskBody,
@@ -20,6 +21,9 @@ async function unwrap<T>(
   promise: Promise<{ data: Envelope<T> }>,
 ): Promise<T> {
   const res = await promise;
+  if (res.data?.success !== true || !Object.hasOwn(res.data, 'data')) {
+    throw new Error('未收到完整游戏结果，请核对原请求。');
+  }
   return res.data.data;
 }
 
@@ -79,4 +83,15 @@ export function listLibrary(offset = 0, limit = 20) {
       params: { offset: String(offset), limit: String(limit) },
     }),
   );
+}
+
+export type CommandEndpoint = 'actions' | 'discussion' | 'table' | 'decisions' | 'guided'
+  | 'responses' | 'private-responses' | 'topic' | 'phone-pause' | 'finale-motivations';
+export type CommandBody = { expected_revision: number; idempotency_key: string; [key: string]: unknown };
+
+export async function command(playId: string, endpoint: CommandEndpoint, body: CommandBody) {
+  const token = currentToken();
+  const result = await unwrap<PlayView>(http.post(`/api/fusion/package-plays/${encodeURIComponent(playId)}/${endpoint}`, body));
+  if (currentToken() !== token) throw new Error('登录身份已变化，请重新打开原局。');
+  return result;
 }

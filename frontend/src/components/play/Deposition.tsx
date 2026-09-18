@@ -17,7 +17,7 @@ export function Deposition({ entry }: { entry: DepositionEntry }) {
         >
           {speaker}
         </div>
-        <p className="mt-1 text-[15px] leading-relaxed text-mist">{text}</p>
+        <p className="mt-1 whitespace-pre-wrap break-words text-[15px] leading-relaxed text-mist">{text}</p>
       </div>
     </div>
   );

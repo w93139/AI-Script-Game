@@ -5,6 +5,7 @@ from src.fusion.package_guided_flow import require, safe_text, stable_id, digest
 from src.fusion.package_validation import content_hash, validate_package
 from src.fusion.package_play_rules import PlayRulesError
 from src.fusion.topic_answer_checks import validate_contract, freeze_contract
+from src.fusion.topic_response_plan import validate_topic_plan
 
 SINGLE_POLICY = 'package-single-player/1.0'
 
@@ -78,6 +79,11 @@ class SinglePlayerContent:
                 if 'answer_contract' in responder:
                     validate_contract(responder['answer_contract'],
                         {(r['collection'],r['id']):material(r) for r in responder['basis']}, ids)
+                if 'response_plans' in responder:
+                    plans = responder['response_plans']
+                    require(type(plans) is dict and bool(plans) and set(plans) <= ids)
+                    for plan in plans.values():
+                        validate_topic_plan(plan, {(r['collection'], r['id']): material(r) for r in responder['basis']})
             require(bool(actors))
             self.topics[topic['id']] = deepcopy(topic)
         self.revision = content_hash(document)
@@ -121,6 +127,8 @@ class SinglePlayerContent:
         fallback = next(a['fixed_fallback'] for a in private['answers'] if a['intent_id'] == payload['intent_id'])
         result = {'title': topic['title'], 'question': intent['question'], 'basis': private['basis'],
                 'disclosure': private['disclosure'], 'fallback': fallback, 'catalog_hash': self.revision}
+        if payload['intent_id'] in private.get('response_plans', {}):
+            result['topic_response_task'] = deepcopy(private['response_plans'][payload['intent_id']])
         if 'answer_contract' in private:
             view = engine.view()
             public = {(c,m['id']) for c in ('knowledge','evidence') for m in view['public_'+c]}

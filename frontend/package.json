@@ -13,6 +13,7 @@
     "start": "next start -p 8009",
     "lint": "eslint src",
     "check": "eslint src && tsc --noEmit --incremental false",
+    "test": "node --test tests/*.test.cjs",
     "generate-api": "npx openapi-typescript-codegen --input http://localhost:8010/openapi.json --output ./src/client --client axios"
   },
   "dependencies": {

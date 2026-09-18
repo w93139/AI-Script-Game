@@ -21,6 +21,9 @@ for name in (
     "DEEPSEEK_API_KEY", "OPENAI_API_KEY", "TTS_API_KEY", "MINIMAX_GROUP_ID", "REDIS_URL",
     "ARK_API_KEY", "ARK_BASE_URL", "ARK_CHARACTER_MODEL",
     "DASHSCOPE_API_KEY", "DASHSCOPE_BASE_URL", "DASHSCOPE_QWEN_MODEL",
+    "ANT_MAAS_API_KEY", "ANT_MAAS_BASE_URL", "ANT_MAAS_MODEL",
+    "ANT_MAAS_QWEN_INPUT_COST_PER_MILLION", "ANT_MAAS_QWEN_CACHED_INPUT_COST_PER_MILLION",
+    "ANT_MAAS_QWEN_OUTPUT_COST_PER_MILLION", "ANT_MAAS_QWEN_PRICING_VERSION",
     "ENABLE_PAID_MODEL_CALLS", "GAME_TOKEN_BUDGET", "GAME_COST_BUDGET_CNY",
     "DEEPSEEK_INPUT_COST_PER_MILLION", "DEEPSEEK_CACHED_INPUT_COST_PER_MILLION",
     "DEEPSEEK_OUTPUT_COST_PER_MILLION", "DEEPSEEK_PRICING_VERSION",
@@ -43,6 +46,15 @@ def no_network(*args, **kwargs):
     raise AssertionError("The offline Fusion suite must not open network connections")
 
 
+def suite_paths(backend: Path) -> list[str]:
+    # The three required suites stay explicit even when absent: pytest must
+    # fail in that case. media_safety belonged to the removed media feature.
+    required = [backend / "tests" / "fusion_security", backend / "tests" / "test_fusion_service.py",
+                backend / "tests" / "test_fusion_rules.py"]
+    optional = backend / "tests" / "media_safety"
+    return [str(path) for path in required] + ([str(optional)] if optional.is_dir() else [])
+
+
 def main() -> int:
     import pytest
 
@@ -56,9 +68,7 @@ def main() -> int:
         patch("socket.create_connection", no_network),
     ):
         return pytest.main([
-            str(suite), str(BACKEND / "tests" / "test_fusion_service.py"),
-            str(BACKEND / "tests" / "test_fusion_rules.py"),
-            str(BACKEND / "tests" / "media_safety"),
+            *suite_paths(BACKEND),
             f"--confcutdir={suite}", "-p", "no:cacheprovider", "-q", *sys.argv[1:],
         ])
 

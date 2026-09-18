@@ -144,7 +144,7 @@ class PackageRoleModel:
                 raise ValueError
             payload = {"context": parsed, "question": question}
             schema = MaterialSelection.model_json_schema()
-            messages = [{"role": "system", "content": PROMPT + "\nJSON Schema：" + canonical_json(schema)},
+            messages = [{"role": "system", "content": self.profile.prompt_for_wire(PROMPT + "\nJSON Schema：" + canonical_json(schema))},
                         {"role": "user", "content": canonical_json(payload)}]
             size = len(canonical_json(messages).encode("utf-8"))
         except (ValueError, TypeError, KeyError, RecursionError):

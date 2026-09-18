@@ -4,6 +4,7 @@ from copy import deepcopy
 from dataclasses import replace
 from decimal import Decimal
 import json
+from hashlib import sha256
 
 import pytest
 
@@ -368,3 +369,97 @@ def test_grounded_finale_preserves_other_speakers_experience_attribution():
     with pytest.raises(ValueError,match='ATTRIBUTION_REQUIRED'): validate_finale_motivation(raw,context)
     raw['text']='我怀疑 b，他说见过那个旅客。'
     assert validate_finale_motivation(raw,context)==raw
+
+
+def careful_context(version='1.2'):
+    return {'schema_version': f'finale-motivation-context/{version}', 'character': {'id': 'a'},
+        'materials': [{'collection': 'evidence', 'id': 'note', 'text': '旅客在三天前预订了房间。'}],
+        'evidence_origins': [{'id': 'note', 'labels': ['登记处']}],
+        'discussion': [{'id': 'claim-old', 'speaker': 'b', 'text': '我多年前在码头见过穿灰衣的人。'},
+                       {'id': 'claim-recent', 'speaker': 'c', 'text': '我昨晚在车站见过穿灰衣的人。'}]}
+
+
+def test_finale_legacy_prompt_and_schema_hashes_stay_frozen():
+    from src.fusion.package_dialogue_model import (
+        PROMPTS, FinaleMotivationOutput, FinaleMotivationContext, GroundedFinaleMotivationContext,
+    )
+    assert sha256(PROMPTS['finale-motivation/1.0'].encode()).hexdigest() == 'f9044c0a0e790c5ef33aae1cd3e744990f328f59aa773cd5935cb2a93958d14a'
+    assert sha256(PROMPTS['finale-motivation/1.1'].encode()).hexdigest() == '2788a851480c7680fd2e560cfd15f4a01d8995c35f8e7c844e299960bcec90a2'
+    assert content_hash(FinaleMotivationOutput.model_json_schema()) == '70bb3d0809b40ca527db6e0a0198716b6fcdab3dcee66deee6ea6156637779b4'
+    assert content_hash(FinaleMotivationContext.model_json_schema()) == '97d51eca444ca1dc553d7f2afe3917073c96d3f335d7778700b35b7b2887d0b0'
+    assert content_hash(GroundedFinaleMotivationContext.model_json_schema()) == '53ad9a7c1a2426d768157c991c2d1b75afc0d821d4e3fdaad6b00393e08401a4'
+
+
+@pytest.mark.parametrize('text,error', [
+    ('我怀疑 b，两人的说法不同，必有一人在编造。', 'CERTAINTY_UNSUPPORTED'),
+    ('我怀疑 b，他必定隐瞒了行程。', 'CERTAINTY_UNSUPPORTED'),
+    ('我怀疑 b，这绝对是他的东西。', 'CERTAINTY_UNSUPPORTED'),
+    ('我怀疑 b，他精神不佳，证词可信度低。', 'CREDIBILITY_UNSUPPORTED'),
+    ('我怀疑 b，他说话吞吞吐吐，所以证词不可信。', 'CREDIBILITY_UNSUPPORTED'),
+])
+def test_careful_finale_bounded_claims_rejected_only_in_new_policy(text, error):
+    raw = {'text': text, 'basis': [{'collection': 'evidence', 'id': 'note'}]}
+    for version in ('1.0', '1.1'):
+        assert validate_finale_motivation(raw, careful_context(version)) == raw
+    with pytest.raises(ValueError, match=error):
+        validate_finale_motivation(raw, careful_context())
+
+
+@pytest.mark.parametrize('text', [
+    '我怀疑 b，他说的昨晚行程仍待核对。',
+    '我怀疑 b，但精神不佳不代表证词不可信，仍需核对记录。',
+    '我认为两次见闻可能有关，却不能单凭地点不同指认说谎。',
+    '我认为目前没有足够依据指认任何人。',
+])
+def test_careful_finale_preserves_qualified_and_noncausal_wording(text):
+    raw = {'text': text, 'basis': [{'collection': 'discussion', 'id': 'claim-old'},
+                                 {'collection': 'discussion', 'id': 'claim-recent'}]}
+    assert validate_finale_motivation(raw, careful_context()) == raw
+    assert validate_finale_motivation({'text': '', 'basis': []}, careful_context()) == {'text': '', 'basis': []}
+
+
+@pytest.mark.parametrize('old_policy', ['finale-motivation/1.0', 'finale-motivation/1.1'])
+def test_careful_policy_does_not_revalidate_old_recorded_inference(play, old_policy):
+    play.test_finale_policy = old_policy
+    _, _, view = enter_finale(play)
+    legacy = answer('我怀疑 a，必有一人在编造。')
+    play.sdk.chat_completion.return_value = output(legacy)
+    old = asyncio.run(play.play.complete_finale_motivations(view['play_id'], 1))
+    assert all(s['text'] == legacy['text'] for s in old['finale_speeches'])
+    before = [(e.event_json, e.event_hash, e.state_hash) for e in events(play)]
+    play.test_finale_policy = 'finale-motivation/1.2'
+    newer = service(play)
+    assert newer.get(view['play_id'], 1) == old
+    assert asyncio.run(newer.complete_finale_motivations(view['play_id'], 1)) == old
+    assert [(e.event_json, e.event_hash, e.state_hash) for e in events(play)] == before
+    assert play.sdk.chat_completion.await_count == 4
+
+
+@pytest.mark.parametrize('invalid', [False, True])
+def test_careful_finale_binds_new_context_once_and_preserves_engine(play, invalid):
+    play.test_finale_policy = 'finale-motivation/1.2'
+    _, _, view = enter_finale(play)
+    row = play.play._row(view['play_id'], 1); package, binding = play.play._resolve(row)
+    before = deepcopy(play.play._replay(row, package, binding).engine.state())
+    async def sdk(messages, **params):
+        context = json.loads(messages[1].content)['context']
+        assert context['schema_version'] == 'finale-motivation-context/1.2'
+        assert context['evidence_origins']
+        assert '同一事件和时间' in messages[0].content
+        assert '必须引用对应 discussion' in messages[0].content
+        assert '不能直接证明其见闻不可靠' in messages[0].content
+        assert 'PRIVATE_BOOK_' not in canonical_json(context)
+        assert 'SYSTEM_TRUTH' not in canonical_json(context)
+        return output(answer('我怀疑 a，必有一人在编造。') if invalid else answer())
+    play.sdk.chat_completion.side_effect = sdk
+    done = asyncio.run(play.play.complete_finale_motivations(view['play_id'], 1))
+    assert done['finale_motivation']['policy'] == 'finale-motivation/1.2'
+    assert done['finale_motivation']['complete'] and not done['pending_ai']
+    assert all(bool(s['text']) is not invalid for s in done['finale_speeches'])
+    assert play.play._replay(row, package, binding).engine.state() == before
+    assert service(play).get(view['play_id'], 1) == done
+    assert asyncio.run(play.play.complete_finale_motivations(view['play_id'], 1)) == done
+    assert play.sdk.chat_completion.await_count == 4
+    # Invalid wording stays empty and still allows the existing finale form.
+    sealed = play.play.table(view['play_id'], command(done['revision'], 'SEAL_FINALE', submission('a')), 1)
+    assert sealed['full_game']['finale']['sealed']

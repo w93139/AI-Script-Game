@@ -38,7 +38,8 @@ from src.fusion.package_dialogue_model import PackageDialogueModel, dialogue_met
 from src.fusion.package_dialogue_model import FullPackageDialogueModel, StrategyFullPackageDialogueModel, CatalogFullPackageDialogueModel, ClarifyingFullPackageDialogueModel, dialogue_context_window
 from src.fusion.package_dialogue_model import ExcerptFullPackageDialogueModel, WrappedExcerptFullPackageDialogueModel, PassageFullPackageDialogueModel, CompactPassageFullPackageDialogueModel, TaskPassageFullPackageDialogueModel, FocusedTaskPassageFullPackageDialogueModel, ScopedTaskPackageDialogueModel, scope_retelling_context, refuses_meta_request
 from src.fusion.required_retelling import required_retelling_task
-from src.fusion.package_table_model import PackageTableModel, BoundPackageTableModel, table_metadata, validate_table_decision, table_context_window
+from src.fusion.package_table_model import (PackageTableModel, BoundPackageTableModel, ReasonedPackageTableModel,
+    TABLE_MODEL_CONTRACTS, REASONED_MODEL_CONTRACT, table_metadata, validate_table_decision, table_context_window)
 from src.fusion.package_call_model import PackageCallModel, StrategyPackageCallModel, CatalogPackageCallModel, ClarifyingPackageCallModel, call_metadata, validate_call, call_window
 from src.fusion.package_call_model import ExcerptPackageCallModel, WrappedExcerptPackageCallModel, PassagePackageCallModel, CompactPassagePackageCallModel, AttributedPackageCallModel
 from src.fusion.package_runtime import PackageRuntimeService, PackageRuntimeError, PublicationReader
@@ -52,14 +53,17 @@ from src.fusion.package_round_workspace import plan_round, capture_workspace, pr
 from src.schemas.package_play import TopicCommand
 from src.fusion.package_single_player import SINGLE_POLICY, topic_response_request, topic_status
 from src.fusion.package_role_content import resolve_role_content, role_content_required
-from src.fusion.topic_answer_checks import (BASIS_VERSION, BASIS_GUIDANCE, DISCLOSURE_VERSION,
+from src.fusion.topic_answer_checks import (BASIS_VERSIONS, BASIS_GUIDANCE, DISCLOSURE_VERSIONS,
                                             DISCLOSURE_GUIDANCE, validate_topic_answer)
 from src.fusion.finale_motivation import FinaleMotivationMixin, FINALE_BINDING_CONTRACT, unfinished
 from src.fusion.package_dialogue_model import FINALE_MOTIVATION_POLICY, FINALE_MOTIVATION_POLICIES, validate_finale_motivation
+from src.fusion.package_dialogue_model import TopicTaskPackageDialogueModel, TOPIC_TASK_MODEL_CONTRACT
+from src.fusion.topic_response_plan import validate_topic_plan
 
 
 BINDING_CONTRACT = "package-text-play-binding/1.0"
 FULL_BINDING_CONTRACT = 'package-text-play-binding/1.2'
+TABLE_BINDING_CONTRACT = 'package-text-play-binding/1.4'
 EVENT_CONTRACT = "package-text-play-event/1.0"
 MAX_QUESTIONS = 30
 MAX_STATEMENTS = 100
@@ -160,7 +164,7 @@ class PackagePlayService(FinaleMotivationMixin):
                  speech_policy: str = 'role-speech/1.0', table_policy: str = 'package-table-model/1.0',
                  include_interactions: bool = False, request_scope_policy: str | None = None,
                  presentation_repair=None, guided_content=None, single_player_content=None, single_player_required=None,
-                 finale_policy=None):
+                 finale_policy=None, legacy_table_policy=None):
         if type(include_interactions) is not bool:
             raise PackagePlayError('PACKAGE_PLAY_VIEW_POLICY_INVALID')
         if request_scope_policy not in (None, REQUEST_SCOPE_POLICY):
@@ -188,15 +192,27 @@ class PackagePlayService(FinaleMotivationMixin):
         settings = getattr(self.model, 'settings', None)
         full_settings = replace(settings, max_input_bytes=full_input_bytes) if settings is not None else None
         self._setup_finale_motivation(finale_policy, full_settings)
-        if table_policy not in ('package-table-model/1.0', 'package-table-model/1.1'):
+        if table_policy not in TABLE_MODEL_CONTRACTS:
             raise PackagePlayError('FULL_PLAY_TABLE_POLICY_INVALID')
-        table_type = BoundPackageTableModel if table_policy == 'package-table-model/1.1' else PackageTableModel
+        table_types = {'package-table-model/1.0': PackageTableModel,
+                       'package-table-model/1.1': BoundPackageTableModel,
+                       REASONED_MODEL_CONTRACT: ReasonedPackageTableModel}
+        table_type = table_types[table_policy]
         self.table_model = table_model if table_model is not None else table_type(
             client=getattr(self.model, 'client', None),
             settings=replace(full_settings, max_output_tokens=full_table_output_tokens) if full_settings is not None else None)
+        if self.table_model.model_contract not in TABLE_MODEL_CONTRACTS:
+            raise PackagePlayError('FULL_PLAY_TABLE_POLICY_INVALID')
+        # Pre-1.4 games did not freeze a table policy before their first event.
+        # The deployment must retain its old default explicitly when enabling
+        # 1.2; a recorded table event always takes precedence over this fallback.
+        self.legacy_table_policy = legacy_table_policy if legacy_table_policy is not None else (
+            self.table_model.model_contract if self.table_model.model_contract != REASONED_MODEL_CONTRACT else 'package-table-model/1.0')
+        if self.legacy_table_policy not in ('package-table-model/1.0', 'package-table-model/1.1'):
+            raise PackagePlayError('FULL_PLAY_LEGACY_TABLE_POLICY_INVALID')
         self.full_proposal_model = FullPackageProposalModel(client=getattr(self.model, 'client', None), settings=full_settings)
         self.guided_proposal_model = GuidedPackageProposalModel(client=getattr(self.model, 'client', None), settings=full_settings)
-        if speech_policy not in ('role-speech/1.0', 'role-speech/1.1', 'role-speech/1.2', 'role-speech/1.3', 'role-speech/1.4', 'role-speech/1.5', 'role-speech/1.6', 'role-speech/1.7', 'role-speech/1.8', 'role-speech/1.9', 'role-speech/1.10'):
+        if speech_policy not in ('role-speech/1.0', 'role-speech/1.1', 'role-speech/1.2', 'role-speech/1.3', 'role-speech/1.4', 'role-speech/1.5', 'role-speech/1.6', 'role-speech/1.7', 'role-speech/1.8', 'role-speech/1.9', 'role-speech/1.10', 'role-speech/1.11'):
             raise PackagePlayError('FULL_PLAY_SPEECH_POLICY_INVALID')
         dialogue_type = StrategyFullPackageDialogueModel if speech_policy == 'role-speech/1.1' else FullPackageDialogueModel
         phone_type = StrategyPackageCallModel if speech_policy == 'role-speech/1.1' else PackageCallModel
@@ -218,7 +234,11 @@ class PackagePlayService(FinaleMotivationMixin):
             dialogue_type, phone_type = FocusedTaskPassageFullPackageDialogueModel, AttributedPackageCallModel
         if speech_policy == 'role-speech/1.10':
             dialogue_type, phone_type = ScopedTaskPackageDialogueModel, AttributedPackageCallModel
+        if speech_policy == 'role-speech/1.11':
+            dialogue_type, phone_type = TopicTaskPackageDialogueModel, AttributedPackageCallModel
         self.full_dialogue_model = dialogue_type(client=getattr(self.model, 'client', None), settings=full_settings)
+        self.previous_full_dialogue_model = ScopedTaskPackageDialogueModel(
+            client=getattr(self.model, 'client', None), settings=full_settings) if speech_policy == 'role-speech/1.11' else None
         self.phone_model = phone_type(client=getattr(self.model,'client',None),settings=full_settings)
         self.policy = policy if policy is not None else BudgetPolicy.from_env(self.model.metadata()["provider"])
         self.now = now or time.time
@@ -289,7 +309,7 @@ class PackagePlayService(FinaleMotivationMixin):
                         or type(full['max_input_bytes']) is not int or not 1024 <= full['max_input_bytes'] <= 98304):
                     raise ValueError
                 expected.update(schema_version=binding['schema_version'], full_input=full)
-                if binding['schema_version'] in (FULL_BINDING_CONTRACT, FINALE_BINDING_CONTRACT):
+                if binding['schema_version'] in (FULL_BINDING_CONTRACT, FINALE_BINDING_CONTRACT, TABLE_BINDING_CONTRACT):
                     output = binding['full_output']
                     if (set(output) != {'schema_version', 'max_output_tokens'}
                             or output['schema_version'] != 'full-play-table-output-policy/1.0'
@@ -300,6 +320,12 @@ class PackagePlayService(FinaleMotivationMixin):
                         if binding.get('finale_motivation_policy') not in FINALE_MOTIVATION_POLICIES:
                             raise ValueError
                         expected['finale_motivation_policy'] = binding['finale_motivation_policy']
+                    elif binding['schema_version'] == TABLE_BINDING_CONTRACT:
+                        if (binding.get('table_policy') != REASONED_MODEL_CONTRACT
+                                or binding.get('finale_motivation_policy') not in (None, *FINALE_MOTIVATION_POLICIES)):
+                            raise ValueError
+                        expected.update(table_policy=binding['table_policy'],
+                                        finale_motivation_policy=binding['finale_motivation_policy'])
                 elif binding['schema_version'] != 'package-text-play-binding/1.1':
                     raise ValueError
             if (binding != expected or content_hash(request) != row.request_hash
@@ -369,6 +395,9 @@ class PackagePlayService(FinaleMotivationMixin):
                 binding.update(schema_version=FULL_BINDING_CONTRACT, full_input=self.full_input.copy(), full_output=self.full_output.copy())
                 if self.finale_policy is not None:
                     binding.update(schema_version=FINALE_BINDING_CONTRACT, finale_motivation_policy=self.finale_policy)
+                if self.table_model.model_contract == REASONED_MODEL_CONTRACT:
+                    binding.update(schema_version=TABLE_BINDING_CONTRACT, table_policy=REASONED_MODEL_CONTRACT,
+                                   finale_motivation_policy=self.finale_policy)
             row = ScriptPackagePlay(**{key: binding[key] for key in (
                 "play_id", "owner_user_id", "opening_session_id", "release_id", "version_id", "package_hash",
                 "selected_character_id", "request_hash")}, idempotency_key=request["idempotency_key"],
@@ -420,7 +449,7 @@ class PackagePlayService(FinaleMotivationMixin):
             sequence = state.revision + 1
             if request['action'] == 'ASK_TOPIC':
                 p = request['payload']
-                if (set(data) - {'answer_contract'} != {'title','question','basis','disclosure','fallback','catalog_hash'}
+                if (set(data) - {'answer_contract', 'topic_response_task'} != {'title','question','basis','disclosure','fallback','catalog_hash'}
                         or not valid_hash(data['catalog_hash']) or not safe_text(data['question'], 800)
                         or not safe_text(data['fallback'], 1000) or not safe_text(data['title'], 120)
                         or p['character_id'] == binding['selected_character_id']
@@ -430,6 +459,9 @@ class PackagePlayService(FinaleMotivationMixin):
                 if not data['basis'] or any((r['collection'],r['id']) not in known
                         or digest(known[(r['collection'],r['id'])]['text']) != r['text_sha256'] for r in data['basis']):
                     raise ValueError
+                if 'topic_response_task' in data:
+                    validate_topic_plan(data['topic_response_task'],
+                        {(r['collection'], r['id']): known[(r['collection'], r['id'])] for r in data['basis']})
                 if p['channel'] == 'PRIVATE':
                     state.engine.table_apply('PRIVATE_SPEAK', binding['selected_character_id'], {'text':data['question']}, sequence)
                     reply_to = f'private-{sequence}'
@@ -590,7 +622,7 @@ class PackagePlayService(FinaleMotivationMixin):
                 raise ValueError
             context = (self._phone_context(state,binding,version=data.get('model',{}).get('schema_version')) if calling else self._table_context(state, binding, request['character_id'], request['action'], version=data.get('model', {}).get('schema_version')) if deciding
                        else self._dialogue_context(state, binding, request["character_id"], request["reply_to"], private=private, version=data.get("model",{}).get("schema_version")) if responding
-                       else self._proposal_context(state, binding, request["character_id"]) if proposing
+                       else self._proposal_context(state, binding, request["character_id"], version=data.get('model', {}).get('schema_version')) if proposing
                        else state.engine.role_context(request["character_id"]))
             if proposing:
                 full_proposal = isinstance(state.engine, PackageFullPlayRules)
@@ -602,11 +634,13 @@ class PackagePlayService(FinaleMotivationMixin):
                     raise ValueError
             if responding and (type(data.get("model")) is not dict
                                or data["model"] != dialogue_metadata(self._full_base(binding) if isinstance(state.engine, PackageFullPlayRules) else binding['model'], data['model'].get('schema_version'))
-                               or (isinstance(state.engine, PackageFullPlayRules) and data['model'].get('schema_version') not in ('package-dialogue-model/1.3', 'package-dialogue-model/1.4', 'package-dialogue-model/1.5', 'package-dialogue-model/1.6', 'package-dialogue-model/1.7', 'package-dialogue-model/1.8', 'package-dialogue-model/1.9', 'package-dialogue-model/1.10', 'package-dialogue-model/1.11', 'package-dialogue-model/1.12', 'package-dialogue-model/1.13'))
+                               or (isinstance(state.engine, PackageFullPlayRules) and data['model'].get('schema_version') not in ('package-dialogue-model/1.3', 'package-dialogue-model/1.4', 'package-dialogue-model/1.5', 'package-dialogue-model/1.6', 'package-dialogue-model/1.7', 'package-dialogue-model/1.8', 'package-dialogue-model/1.9', 'package-dialogue-model/1.10', 'package-dialogue-model/1.11', 'package-dialogue-model/1.12', 'package-dialogue-model/1.13', 'package-dialogue-model/1.14'))
                                or (state.response_model is not None and state.response_model != data["model"])):
                 raise ValueError
             if deciding and not calling and (data.get('model') != table_metadata(self._full_table_base(binding), data.get('model', {}).get('schema_version'))
-                             or (state.table_model is not None and state.table_model != data['model'])):
+                             or (state.table_model is not None and state.table_model != data['model'])
+                             or (binding.get('table_policy') is not None and data['model']['schema_version'] != binding['table_policy'])
+                             or (binding.get('table_policy') is None and data['model']['schema_version'] == REASONED_MODEL_CONTRACT)):
                 raise ValueError
             if calling and (data.get('model') != call_metadata(self._full_base(binding),data.get('model',{}).get('schema_version'))
                             or (state.phone_model is not None and state.phone_model != data['model'])):
@@ -710,7 +744,8 @@ class PackagePlayService(FinaleMotivationMixin):
                 state.retelling_attempts.extend({"character_id": pending["character_id"], "memory_id": identifier,
                     "sequence": state.revision + 1, "status": "ATTEMPTED_UNVERIFIED"} for identifier in memory_ids)
             elif proposing:
-                context = self._proposal_context(state, binding, pending["character_id"], pending["revision"] - 1)
+                context = self._proposal_context(state, binding, pending["character_id"], pending["revision"] - 1,
+                                                 version=pending['model']['schema_version'])
                 if content_hash(context) != pending["context_hash"] or data["refs"] != []:
                     raise ValueError
                 state.proposals.append(render_proposal(data["proposal"], context, state.revision + 1, pending["model"]["schema_version"]))
@@ -812,7 +847,7 @@ class PackagePlayService(FinaleMotivationMixin):
                 {key: speech[key] for key in ("speaker", "text", "phase_id")} if speech else None)
 
     @staticmethod
-    def _proposal_context(state: Replay, binding: dict, character: str, revision: int | None = None) -> dict:
+    def _proposal_context(state: Replay, binding: dict, character: str, revision: int | None = None, version=None) -> dict:
         if not isinstance(state.engine, PackageInvestigationRules):
             raise PlayRulesError("PACKAGE_PLAY_PROPOSAL_UNSUPPORTED")
         context = state.engine.proposal_context(character)
@@ -827,7 +862,9 @@ class PackagePlayService(FinaleMotivationMixin):
             value['schema_version'] = 'package-investigation-context/1.1'
             # This public suggestion only cites public claims; the separate
             # formal decision context also includes actually heard phone claims.
-            return proposal_context_window(value, PackagePlayService._full_base(binding)['max_input_bytes'])
+            version = version or (state.proposal_model or {}).get('schema_version', 'package-proposal-model/1.1')
+            return proposal_context_window(value, PackagePlayService._full_base(binding)['max_input_bytes'],
+                                           version, provider_model=binding['model'])
         return value
 
     @staticmethod
@@ -850,14 +887,14 @@ class PackagePlayService(FinaleMotivationMixin):
         if isinstance(state.engine, PackageFullPlayRules):
             version = version or (state.response_model or {}).get('schema_version', 'package-dialogue-model/1.3')
             value['schema_version'] = 'package-dialogue-context/1.1'
-            if version in ('package-dialogue-model/1.4', 'package-dialogue-model/1.5', 'package-dialogue-model/1.6', 'package-dialogue-model/1.7', 'package-dialogue-model/1.8', 'package-dialogue-model/1.9', 'package-dialogue-model/1.10', 'package-dialogue-model/1.11', 'package-dialogue-model/1.12', 'package-dialogue-model/1.13'):
+            if version in ('package-dialogue-model/1.4', 'package-dialogue-model/1.5', 'package-dialogue-model/1.6', 'package-dialogue-model/1.7', 'package-dialogue-model/1.8', 'package-dialogue-model/1.9', 'package-dialogue-model/1.10', 'package-dialogue-model/1.11', 'package-dialogue-model/1.12', 'package-dialogue-model/1.13', 'package-dialogue-model/1.14'):
                 value['schema_version'] = 'package-dialogue-context/1.2'
                 value['strategy_materials'] = state.engine.speech_strategy(character)
             value['channel'] = 'PRIVATE' if private else 'PUBLIC'
             value['discussion'].extend({k: e[k] for k in ('id', 'sequence', 'speaker', 'text', 'kind')}
                                         for e in state.engine.personal_discussion(character))
             value['discussion'].sort(key=lambda e: e['sequence'])
-            if version in ('package-dialogue-model/1.11', 'package-dialogue-model/1.12', 'package-dialogue-model/1.13'):
+            if version in ('package-dialogue-model/1.11', 'package-dialogue-model/1.12', 'package-dialogue-model/1.13', 'package-dialogue-model/1.14'):
                 value['schema_version'] = 'package-dialogue-context/1.3'
                 completed = {e['material_id'] for e in state.scripted_retells
                              if e['owner'] == character and e['collection'] == 'memory'}
@@ -866,7 +903,7 @@ class PackagePlayService(FinaleMotivationMixin):
                 task = None if topic is not None or refuses_meta_request(value) else required_retelling_task(assignment, state.retelling_attempts)
                 if task is not None:
                     value['response_task'] = task
-            if version == 'package-dialogue-model/1.13':
+            if version in ('package-dialogue-model/1.13', TOPIC_TASK_MODEL_CONTRACT):
                 value = scope_retelling_context(value)
             topic = next((t for t in state.topic_turns if t['reply_to'] == reply_to and t['character_id'] == character
                           and t['channel'] == ('PRIVATE' if private else 'PUBLIC')), None)
@@ -890,26 +927,40 @@ class PackagePlayService(FinaleMotivationMixin):
                             value['strategy_materials'][-1]['text'] += (
                                 '其中public_document_basis是已取得的文献，可明确说报纸或头条写了什么；'
                                 '阅读文献不等于你亲眼见过其中报道的事件，须保留文献归属。')
-                        if topic['answer_contract'].get('schema_version') in (BASIS_VERSION, DISCLOSURE_VERSION):
+                        if topic['answer_contract'].get('schema_version') in BASIS_VERSIONS:
                             # Historical context hashes depend on the exact 1.0
                             # text above; new guidance belongs only to 1.1 turns.
                             value['strategy_materials'][-1]['text'] += BASIS_GUIDANCE
-                        if topic['answer_contract'].get('schema_version') == DISCLOSURE_VERSION:
+                        if topic['answer_contract'].get('schema_version') in DISCLOSURE_VERSIONS:
                             value['strategy_materials'][-1]['text'] += DISCLOSURE_GUIDANCE
                 related = {t['reply_to'] for t in state.topic_turns if t['topic_id'] == topic['topic_id']
                            and t['character_id'] == character and t['channel'] == topic['channel']}
                 related |= {t['answer_id'] for t in state.topic_turns if t['topic_id'] == topic['topic_id']
                             and t['character_id'] == character and t['channel'] == topic['channel'] and 'answer_id' in t}
                 value['discussion'] = [e for e in value['discussion'] if e['id'] in related]
-            return dialogue_context_window(value, PackagePlayService._full_base(binding)['max_input_bytes'], version)
+            if version == TOPIC_TASK_MODEL_CONTRACT:
+                value['schema_version'] = 'package-dialogue-context/1.5'
+                if topic is not None and topic.get('topic_response_task') is not None:
+                    value['topic_response_task'] = deepcopy(topic['topic_response_task'])
+            return dialogue_context_window(value, PackagePlayService._full_base(binding)['max_input_bytes'],
+                                           version, provider_model=binding['model'])
         return value
+
+    def _full_response_adapter(self, state=None, prepared=None):
+        # Existing 1.13 games and frozen requests retain their original adapter.
+        # The new task protocol is opt-in for games without a response binding.
+        if self.previous_full_dialogue_model is not None and (
+                (state is not None and (state.response_model or {}).get('schema_version') == 'package-dialogue-model/1.13')
+                or (prepared is not None and prepared.get('source_context', {}).get('schema_version') == 'package-dialogue-context/1.4')):
+            return self.previous_full_dialogue_model
+        return self.full_dialogue_model
 
     def _dialogue_reason(self, binding: dict, state: Replay) -> str | None:
         reason = self._model_reason(binding)
         if reason:
             return reason
         full = isinstance(state.engine, PackageFullPlayRules)
-        model = self.full_dialogue_model if full else self.dialogue_model
+        model = self._full_response_adapter(state) if full else self.dialogue_model
         expected = dialogue_metadata(self._full_base(binding), model.model_contract) if full else dialogue_metadata(binding['model'])
         if (model.metadata() != expected
                 or (state.response_model is not None and model.metadata() != state.response_model)):
@@ -948,17 +999,48 @@ class PackagePlayService(FinaleMotivationMixin):
         context = {'schema_version': 'package-table-context/1.0', 'play_id': binding['play_id'],
                 'package_hash': binding['package_hash'], 'revision': state.revision if revision is None else revision,
                 **context, 'discussion': sorted(claims, key=lambda c: c['sequence'])}
-        version = version or (state.table_model or {}).get('schema_version', 'package-table-model/1.0')
-        return table_context_window(context, PackagePlayService._full_base(binding)['max_input_bytes'], version)
+        version = version or (state.table_model or {}).get('schema_version') or binding.get('table_policy', 'package-table-model/1.0')
+        return table_context_window(context, PackagePlayService._full_base(binding)['max_input_bytes'],
+                                    version, provider_model=binding['model'])
+
+    def _table_model_for_policy(self, policy):
+        if policy == self.table_model.model_contract:
+            return self.table_model
+        model_type = {'package-table-model/1.0': PackageTableModel,
+                      'package-table-model/1.1': BoundPackageTableModel,
+                      REASONED_MODEL_CONTRACT: ReasonedPackageTableModel}.get(policy)
+        if model_type is None:
+            raise PackagePlayError('FULL_PLAY_TABLE_POLICY_INVALID')
+        return model_type(client=self.table_model.client, settings=self.table_model.settings)
+
+    def _table_adapter(self, binding, state):
+        policy = binding.get('table_policy') or (state.table_model or {}).get('schema_version') or self.legacy_table_policy
+        return self._table_model_for_policy(policy)
+
+    def _prepared_table_adapter(self, prepared):
+        # Preparation froze the complete wire request before committing its
+        # reservation. Select only an adapter that reproduces those exact bytes;
+        # legacy ballot requests intentionally have identical 1.0/1.1 wires.
+        context = json.loads(prepared['messages'][1]['content'])['context']
+        policies = dict.fromkeys((self.table_model.model_contract, *TABLE_MODEL_CONTRACTS))
+        for policy in policies:
+            model = self._table_model_for_policy(policy)
+            try:
+                if model.prepare(context) == prepared:
+                    return model
+            except PackageRoleModelError:
+                continue
+        raise PackagePlayError('PACKAGE_TABLE_PREPARED_INVALID')
 
     def _table_reason(self, binding, state):
         reason = self._model_reason(binding)
         if reason:
             return reason
-        if (self.table_model.metadata() != table_metadata(self._full_table_base(binding), self.table_model.model_contract)
-                or (state.table_model is not None and self.table_model.metadata() != state.table_model)):
+        model = self._table_adapter(binding, state)
+        if (model.metadata() != table_metadata(self._full_table_base(binding), model.model_contract)
+                or (state.table_model is not None and model.metadata() != state.table_model)):
             return 'CONFIG_CHANGED'
-        return None if self.table_model.available else 'MODEL_UNAVAILABLE'
+        return None if self.table_model.available and model.available else 'MODEL_UNAVAILABLE'
 
     @staticmethod
     def _phone_context(state,binding,revision=None,pending=None,version=None):
@@ -976,7 +1058,8 @@ class PackagePlayService(FinaleMotivationMixin):
             value['schema_version'] = 'package-call-context/1.1'
             value['strategy_materials'] = (state.engine.speech_strategy(context['character']['id'])
                                            if context['stage'] == 'CONNECTED' else [])
-        return call_window(value,PackagePlayService._full_base(binding)['max_input_bytes'],version)
+        return call_window(value,PackagePlayService._full_base(binding)['max_input_bytes'],version,
+                           provider_model=binding['model'])
 
     def _phone_reason(self,binding,state):
         reason=self._model_reason(binding)
@@ -1104,7 +1187,7 @@ class PackagePlayService(FinaleMotivationMixin):
                     continue
                 for action in ('CAST_BALLOT', 'BREAK_TIE', 'SEAL_FINALE'):
                     try:
-                        self._table_context(state, binding, c['id'], action, version=self.table_model.model_contract)
+                        self._table_context(state, binding, c['id'], action, version=self._table_adapter(binding, state).model_contract)
                     except PlayRulesError:
                         continue
                     except PackageRoleModelError as exc:
@@ -1226,9 +1309,10 @@ class PackagePlayService(FinaleMotivationMixin):
                 can_fallback = current and not state.pending and status in ('READY','FAILED')
                 if status == 'READY' and can_start and single is not None:
                     try:
+                        reply_model = self._full_response_adapter(state)
                         context = self._dialogue_context(state,binding,turn['character_id'],turn['reply_to'],
-                            private=turn['channel']=='PRIVATE',version=self.full_dialogue_model.model_contract)
-                        prepared = self.full_dialogue_model.prepare(context)
+                            private=turn['channel']=='PRIVATE',version=reply_model.model_contract)
+                        prepared = reply_model.prepare(context)
                         reservation = state.policy.amount(prepared['input_tokens'],prepared['output_tokens'])
                         unavailable = (self._dialogue_reason(binding,state) is not None or state.questions >= self._question_limit(state)
                                        or not state.policy.decide(state.used,state.reserved(),reservation).allowed)
@@ -1621,13 +1705,13 @@ class PackagePlayService(FinaleMotivationMixin):
             if request.get("character_id") == row.selected_character_id:
                 raise PackagePlayError("PACKAGE_PLAY_AI_CHARACTER_INVALID", 422)
             self._check_request_scope(state, request, row.selected_character_id)
-            context = (self._phone_context(state,binding,version=self.phone_model.model_contract) if calling else self._table_context(state, binding, request['character_id'], request['action'], version=self.table_model.model_contract) if deciding
-                       else self._dialogue_context(state, binding, request["character_id"], request["reply_to"], private=private, version=self.full_dialogue_model.model_contract if isinstance(state.engine, PackageFullPlayRules) else None) if responding
-                       else self._proposal_context(state, binding, request["character_id"]) if proposing
+            context = (self._phone_context(state,binding,version=self.phone_model.model_contract) if calling else self._table_context(state, binding, request['character_id'], request['action'], version=self._table_adapter(binding, state).model_contract) if deciding
+                       else self._dialogue_context(state, binding, request["character_id"], request["reply_to"], private=private, version=self._full_response_adapter(state).model_contract if isinstance(state.engine, PackageFullPlayRules) else None) if responding
+                       else self._proposal_context(state, binding, request["character_id"], version=self._proposal_adapter(binding, isinstance(state.engine, PackageFullPlayRules)).metadata()['schema_version']) if proposing
                        else state.engine.role_context(request["character_id"]))
-            model = self.phone_model if calling else self.table_model if deciding else self.dialogue_model if responding else self.proposal_model if proposing else self.model
+            model = self.phone_model if calling else self._table_adapter(binding, state) if deciding else self.dialogue_model if responding else self.proposal_model if proposing else self.model
             if isinstance(state.engine, PackageFullPlayRules) and (responding or proposing):
-                model = self.full_dialogue_model if responding else self._proposal_adapter(binding, True)
+                model = self._full_response_adapter(state) if responding else self._proposal_adapter(binding, True)
             prepared = model.prepare(context, 'CALL_TURN' if calling else 'DECIDE' if deciding else "RESPOND" if responding else "PROPOSE" if proposing else request["question"])
             reserved = state.policy.amount(prepared["input_tokens"], prepared["output_tokens"])
             if not state.policy.decide(state.used, state.reserved(), reserved).allowed:
@@ -1745,7 +1829,8 @@ class PackagePlayService(FinaleMotivationMixin):
                                 deepcopy(state.engine).table_apply('PRIVATE_SPEAK', pending['character_id'], {'text': rendered['text']}, state.revision + 1)
                             status = "OK"
                         elif proposing:
-                            context = self._proposal_context(state, binding, pending["character_id"], pending["revision"] - 1)
+                            context = self._proposal_context(state, binding, pending["character_id"], pending["revision"] - 1,
+                                                             version=pending['model']['schema_version'])
                             proposal = validate_proposal(result.get("proposal"), context, pending["model"]["schema_version"])
                             status = "OK"
                         else:
@@ -1810,8 +1895,8 @@ class PackagePlayService(FinaleMotivationMixin):
         if prepared is None:
             return repeated
         try:
-            full = json.loads(prepared['messages'][1]['content'])['context']['schema_version'] in ('package-dialogue-context/1.1', 'package-dialogue-context/1.2', 'package-dialogue-context/1.3', 'package-dialogue-context/1.4')
-            result = await (self.full_dialogue_model if full else self.dialogue_model).call(prepared)
+            full = json.loads(prepared['messages'][1]['content'])['context']['schema_version'] in ('package-dialogue-context/1.1', 'package-dialogue-context/1.2', 'package-dialogue-context/1.3', 'package-dialogue-context/1.4', 'package-dialogue-context/1.5')
+            result = await (self._full_response_adapter(prepared=prepared) if full else self.dialogue_model).call(prepared)
         except Exception:
             result = None
         return self._finish(identifier, request["idempotency_key"], owner, result)
@@ -1822,7 +1907,7 @@ class PackagePlayService(FinaleMotivationMixin):
         if prepared is None:
             return repeated
         try:
-            result = await self.table_model.call(prepared)
+            result = await self._prepared_table_adapter(prepared).call(prepared)
         except Exception:
             result = None
         return self._finish(identifier, request['idempotency_key'], owner, result)
@@ -1833,7 +1918,7 @@ class PackagePlayService(FinaleMotivationMixin):
         if prepared is None:
             return repeated
         try:
-            result = await self.full_dialogue_model.call(prepared)
+            result = await self._full_response_adapter(prepared=prepared).call(prepared)
         except Exception:
             result = None
         return self._finish(identifier, request['idempotency_key'], owner, result)

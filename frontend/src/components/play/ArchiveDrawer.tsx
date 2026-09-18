@@ -1,110 +1,35 @@
-"use client";
+'use client';
 
-import { X } from "lucide-react";
-import { usePlayUiStore, type ArchiveTab } from "@/stores/playStore";
-import {
-  MOCK_CHARACTERS,
-  MOCK_EVIDENCE,
-  MOCK_MEMORIES,
-  MOCK_NOTES,
-} from "@/lib/mock";
-import { cn } from "@/lib/utils";
+import { useState } from 'react';
+import { X } from 'lucide-react';
+import type { PackagePlay } from '@/types/packagePlay';
+import { Materials, inputClass } from './GamePanels';
 
-const TABS: { id: ArchiveTab; label: string }[] = [
-  { id: "characters", label: "角色" },
-  { id: "evidence", label: "线索" },
-  { id: "memories", label: "回忆" },
-  { id: "notes", label: "手记" },
-];
-
-export function ArchiveDrawer() {
-  const activeTab = usePlayUiStore((s) => s.activeArchiveTab);
-  const setArchiveTab = usePlayUiStore((s) => s.setArchiveTab);
-  const toggleArchive = usePlayUiStore((s) => s.toggleArchive);
-
-  return (
-    <aside className="flex w-72 shrink-0 flex-col border-l border-graphite/60 bg-carbon/30">
-      <div className="flex items-center justify-between border-b border-graphite/60 px-4 py-3">
-        <span className="font-mono text-[11px] tracking-widest text-fog">
-          档案
-        </span>
-        <button
-          onClick={toggleArchive}
-          className="text-fog transition-colors hover:text-paper"
-          aria-label="收起档案"
-        >
-          <X size={14} strokeWidth={2} />
-        </button>
-      </div>
-
-      <div className="flex gap-1 border-b border-graphite/60 px-2 py-2">
-        {TABS.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setArchiveTab(tab.id)}
-            className={cn(
-              "rounded-sm px-2.5 py-1 text-[12px] transition-colors",
-              activeTab === tab.id
-                ? "bg-obsidian text-paper"
-                : "text-fog hover:text-mist",
-            )}
-          >
-            {tab.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="flex-1 space-y-1 overflow-y-auto p-3">
-        {activeTab === "characters" &&
-          MOCK_CHARACTERS.map((c) => (
-            <div
-              key={c.id}
-              className={cn(
-                "rounded-md px-2.5 py-2 text-[13px]",
-                c.self ? "text-acid-lime" : "text-mist hover:bg-obsidian",
-              )}
-            >
-              {c.name}
-              {c.self && <span className="ml-2 text-[11px] text-fog">（你）</span>}
-            </div>
-          ))}
-
-        {activeTab === "evidence" &&
-          MOCK_EVIDENCE.map((e) => (
-            <div
-              key={e.id}
-              className="rounded-md border border-graphite/50 px-2.5 py-2.5"
-            >
-              <div className="text-[13px] font-medium text-paper">{e.title}</div>
-              <div className="mt-0.5 text-[12px] text-ash">{e.note}</div>
-            </div>
-          ))}
-
-        {activeTab === "memories" &&
-          MOCK_MEMORIES.map((m) => (
-            <div
-              key={m.id}
-              className="rounded-md border border-iris-violet/30 px-2.5 py-2.5"
-            >
-              <div className="text-[13px] font-medium text-mist">{m.title}</div>
-              <div className="mt-0.5 text-[12px] text-ash">{m.note}</div>
-            </div>
-          ))}
-
-        {activeTab === "notes" &&
-          (MOCK_NOTES.length ? (
-            MOCK_NOTES.map((n) => (
-              <div
-                key={n.id}
-                className="rounded-md border border-graphite/50 px-2.5 py-2.5 text-[13px] text-mist"
-              >
-                {n.text}
-              </div>
-            ))
-          ) : (
-            <p className="px-2 py-4 text-[13px] text-fog">还没有手记。</p>
-          ))}
-      </div>
-    </aside>
-  );
+export function ArchiveDrawer({ play, scope, onClose }: { play: PackagePlay; scope: string; onClose: () => void }) {
+  const [tab, setTab] = useState('characters');
+  const noteKey = `play-note:${scope}:${play.play_id}:${play.selected_character_id}`;
+  const [note, setNote] = useState(() => localStorage.getItem(noteKey) ?? '');
+  const [noteError, setNoteError] = useState('');
+  const tabs = [['characters', '角色资料'], ['evidence', '线索'], ['memories', '回忆'], ['notes', '手记']];
+  return <aside aria-label="本局档案" className="fixed inset-0 z-30 flex flex-col bg-void p-4 md:static md:z-auto md:w-80 md:shrink-0 md:border-l md:border-graphite">
+    <div className="mb-3 flex items-center justify-between"><h2 className="text-paper">本局档案</h2>
+      <button autoFocus onClick={onClose} aria-label="关闭档案" className="min-h-11 min-w-11"><X size={20} /></button></div>
+    <div className="mb-4 flex flex-wrap gap-1">{tabs.map(([id, title]) => <button key={id} aria-pressed={tab === id}
+      className={`min-h-11 rounded px-2 text-sm ${tab === id ? 'bg-obsidian text-acid-lime' : 'text-mist'}`} onClick={() => setTab(id)}>{title}</button>)}</div>
+    <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
+      {tab === 'characters' && <>
+        {play.characters.map(c => <p key={c.id} className="text-sm">{c.name}{c.id === play.selected_character_id ? '（你）' : ''}</p>)}
+        <Materials title="公共背景" items={play.public_knowledge} collection="knowledge" />
+        <Materials title="本人资料" items={play.private_knowledge} collection="knowledge" />
+      </>}
+      {tab === 'evidence' && <><Materials title="公开线索" items={play.public_evidence} collection="evidence" /><Materials title="本人线索" items={play.private_evidence} collection="evidence" /></>}
+      {tab === 'memories' && <Materials title="已获得的回忆" items={play.memories?.entries ?? []} collection="memory" />}
+      {tab === 'notes' && <label className="block space-y-3"><span className="text-sm text-fog">只保存在当前浏览器，按账号、对局和角色分开。</span>
+        <textarea aria-label="我的手记" className={`${inputClass} min-h-64`} value={note} maxLength={10000} onChange={e => {
+          setNote(e.target.value);
+          try { localStorage.setItem(noteKey, e.target.value); setNoteError(''); }
+          catch { setNoteError('当前浏览器无法保存手记，请先复制保存。'); }
+        }} />{noteError && <span role="alert">{noteError}</span>}</label>}
+    </div>
+  </aside>;
 }

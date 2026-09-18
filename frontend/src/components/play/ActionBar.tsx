@@ -8,7 +8,8 @@ export function ActionBar({ contact = "唐小姐" }: { contact?: string }) {
   const currentAct = usePlayUiStore((s) => s.currentAct);
   const setActionMode = usePlayUiStore((s) => s.setActionMode);
   const play = usePlaySessionStore((s) => s.play);
-  const performAction = usePlaySessionStore((s) => s.performAction);
+  const send = usePlaySessionStore((s) => s.send);
+  const performAction = (action: string, target?: { action_id: string }) => send('actions', { action, ...(target ? { target } : {}) });
 
   const available = play?.mechanics?.available_actions ?? [];
   const firstAction = available[0];

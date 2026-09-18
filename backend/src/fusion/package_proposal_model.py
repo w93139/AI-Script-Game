@@ -8,6 +8,7 @@ from src.fusion.package_role_model import PackageRoleModel, PackageRoleModelErro
 from src.fusion.package_validation import canonical_json, content_hash, parse_package_json
 from src.schemas.script_package import PackageModel, StableId, Text
 from src.fusion.context_window import WINDOW_POLICY, WINDOW_PROMPT, bounded_context, HistoryWindow
+from src.fusion.providers import window_wire_profile
 
 
 MODEL_CONTRACT = "package-proposal-model/1.0"
@@ -126,8 +127,6 @@ class PackageProposalModel(PackageRoleModel):
             # No model-generated free text. Dynamic enums and local validation
             # both constrain choices; the full schema counts towards the budget.
             schema["properties"]["action_id"]["enum"] = [item["id"] for item in parsed["options"]]
-            messages = [{"role": "system", "content": self.prompt},
-                        {"role": "user", "content": canonical_json({"context": parsed, "question": question})}]
             params = self.profile.request_params(self.settings.max_output_tokens, self.settings.temperature)
             def strip_patterns(value):
                 if isinstance(value, dict):
@@ -135,6 +134,8 @@ class PackageProposalModel(PackageRoleModel):
                 return [strip_patterns(item) for item in value] if isinstance(value, list) else value
             params["response_format"] = {"type": "json_schema", "json_schema": {
                 "name": "investigation_proposal", "strict": True, "schema": strip_patterns(schema)}}
+            messages = [{"role": "system", "content": self.profile.prompt_for_wire(self.prompt, params['response_format']['json_schema']['schema'])},
+                        {"role": "user", "content": canonical_json({"context": parsed, "question": question})}]
             size = len(canonical_json(messages).encode()) + len(canonical_json(params["response_format"]).encode())
         except (ValueError, TypeError, KeyError, RecursionError):
             raise PackageRoleModelError("PACKAGE_PROPOSAL_INPUT_INVALID") from None
@@ -206,15 +207,20 @@ class GuidedPackageProposalModel(FullPackageProposalModel):
         return {'proposal': validate_proposal({**selected, 'public_basis': []}, context)}
 
 
-def proposal_context_window(context, max_bytes):
+def proposal_context_window(context, max_bytes, version='package-proposal-model/1.1', provider_model=None):
+    profile = window_wire_profile(provider_model)
     def measure(value):
-        schema = InvestigationProposal.model_json_schema()
+        guided = profile is not None and version == GUIDED_PROPOSAL_VERSION
+        if profile: value = FullProposalContext.model_validate(value).model_dump()
+        schema = (GuidedInvestigationProposal if guided else InvestigationProposal).model_json_schema()
         schema['properties']['action_id']['enum'] = [o['id'] for o in value['options']]
         def strip(value):
             if isinstance(value, dict): return {k: strip(v) for k, v in value.items() if k != 'pattern'}
             return [strip(v) for v in value] if isinstance(value, list) else value
         response = {'type': 'json_schema', 'json_schema': {'name': 'investigation_proposal', 'strict': True, 'schema': strip(schema)}}
-        messages = [{'role': 'system', 'content': PROMPT + WINDOW_PROMPT},
+        prompt = (GUIDED_PROPOSAL_PROMPT if guided else PROMPT) + WINDOW_PROMPT
+        if profile: prompt = profile.prompt_for_wire(prompt, response['json_schema']['schema'])
+        messages = [{'role': 'system', 'content': prompt},
                     {'role': 'user', 'content': canonical_json({'context': value, 'question': 'PROPOSE'})}]
         return len(canonical_json(messages).encode()) + len(canonical_json(response).encode())
     return bounded_context(context, max_bytes, measure)

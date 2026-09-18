@@ -106,9 +106,20 @@ def normalize_provider_usage(value: Any) -> "UsageAmount | None":
         cached_candidates.append(cast(int, cached_prompt))
     details = value.get("prompt_tokens_details")
     if details is not None:
-        if not isinstance(details, Mapping) or not _is_nonnegative_int(details.get("cached_tokens")):
+        if not isinstance(details, Mapping):
             return None
-        cached_candidates.append(cast(int, details["cached_tokens"]))
+        if "text_tokens" in details and (
+            not _is_nonnegative_int(details["text_tokens"]) or details["text_tokens"] > prompt
+        ):
+            return None
+        if "cached_tokens" in details:
+            if not _is_nonnegative_int(details["cached_tokens"]):
+                return None
+            cached_candidates.append(cast(int, details["cached_tokens"]))
+        elif set(details) != {"text_tokens"} or details["text_tokens"] != prompt:
+            return None
+        # A complete text-only breakdown provides no cache discount. Explicit
+        # cache counters elsewhere still have to agree with each other below.
     if cached_candidates and any(item != cached_candidates[0] for item in cached_candidates[1:]):
         return None
     cached = cached_candidates[0] if cached_candidates else 0
@@ -118,12 +129,25 @@ def normalize_provider_usage(value: Any) -> "UsageAmount | None":
     reasoning = 0
     completion_details = value.get("completion_tokens_details")
     if completion_details is not None:
-        if not isinstance(completion_details, Mapping) or not _is_nonnegative_int(
-            completion_details.get("reasoning_tokens"),
+        if not isinstance(completion_details, Mapping):
+            return None
+        if "text_tokens" in completion_details and (
+            not _is_nonnegative_int(completion_details["text_tokens"])
+            or completion_details["text_tokens"] > completion_tokens
         ):
             return None
-        reasoning = cast(int, completion_details["reasoning_tokens"])
-        if reasoning > completion_tokens:
+        if "reasoning_tokens" in completion_details:
+            if not _is_nonnegative_int(completion_details["reasoning_tokens"]):
+                return None
+            reasoning = cast(int, completion_details["reasoning_tokens"])
+            if reasoning > completion_tokens or (
+                "text_tokens" in completion_details
+                and completion_details["text_tokens"] + reasoning > completion_tokens
+            ):
+                return None
+        elif set(completion_details) != {"text_tokens"} or completion_details["text_tokens"] != completion_tokens:
+            # Only a complete pure-text breakdown proves that the missing
+            # reasoning counter can safely be interpreted as zero.
             return None
     if "total_tokens" in value:
         total = value.get("total_tokens")

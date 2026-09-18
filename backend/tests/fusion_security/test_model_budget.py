@@ -3,7 +3,7 @@ from decimal import Decimal
 
 import pytest
 
-from src.fusion.budget import BudgetPolicy, UsageAmount, provider_usage_is_complete
+from src.fusion.budget import BudgetPolicy, UsageAmount, normalize_provider_usage, provider_usage_is_complete
 
 
 PROVIDER_RATE_CASES = (
@@ -54,6 +54,68 @@ def test_cache_tokens_are_not_double_charged():
     })
     assert amount.cached_prompt_tokens == 40
     assert amount.cost_cny == Decimal("364") / Decimal(1_000_000)
+
+
+def test_ant_text_only_usage_details_are_complete_and_charged_without_cache_discount():
+    usage = {
+        "prompt_tokens": 5969,
+        "completion_tokens": 89,
+        "total_tokens": 6058,
+        "prompt_tokens_details": {"text_tokens": 5969},
+        "completion_tokens_details": {"text_tokens": 89},
+    }
+    assert normalize_provider_usage(usage) == UsageAmount(prompt_tokens=5969, completion_tokens=89)
+    configured = policy(input_rate_cny=Decimal("2"), cached_input_rate_cny=Decimal("0.2"),
+                        output_rate_cny=Decimal("12"))
+    assert configured.reported_amount(usage).cost_cny == Decimal("0.013006")
+
+
+@pytest.mark.parametrize("field,total", [("prompt_tokens_details", 5969), ("completion_tokens_details", 89)])
+@pytest.mark.parametrize("invalid", [-1, True, 1.5, "89", None, "below", "above"])
+def test_text_only_details_reject_invalid_or_inconsistent_text_count(field, total, invalid):
+    count = total - 1 if invalid == "below" else total + 1 if invalid == "above" else invalid
+    usage = {"prompt_tokens": 5969, "completion_tokens": 89, field: {"text_tokens": count}}
+    assert normalize_provider_usage(usage) is None
+
+
+@pytest.mark.parametrize("field,total", [("prompt_tokens_details", 5969), ("completion_tokens_details", 89)])
+@pytest.mark.parametrize("details", [{}, [], {"audio_tokens": 0}, {"text_tokens": "total", "audio_tokens": 0}])
+def test_missing_cache_or_reasoning_counter_requires_exact_pure_text_details(field, total, details):
+    details = {k: total if v == "total" else v for k, v in details.items()} if isinstance(details, dict) else details
+    assert normalize_provider_usage({"prompt_tokens": 5969, "completion_tokens": 89, field: details}) is None
+
+
+@pytest.mark.parametrize("field,counter,total", [
+    ("prompt_tokens_details", "cached_tokens", 5969),
+    ("completion_tokens_details", "reasoning_tokens", 89),
+])
+@pytest.mark.parametrize("invalid", [-1, True, 1.5, "1", None, "above"])
+def test_complete_text_count_does_not_hide_invalid_explicit_cache_or_reasoning(field, counter, total, invalid):
+    count = total + 1 if invalid == "above" else invalid
+    usage = {"prompt_tokens": 5969, "completion_tokens": 89, field: {"text_tokens": total, counter: count}}
+    assert normalize_provider_usage(usage) is None
+
+
+def test_text_details_preserve_explicit_cache_and_reasoning_without_hiding_conflicts():
+    usage = {"prompt_tokens": 100, "completion_tokens": 20,
+             "cached_prompt_tokens": 40,
+             "prompt_tokens_details": {"text_tokens": 100, "cached_tokens": 40},
+             "completion_tokens_details": {"text_tokens": 15, "reasoning_tokens": 5}}
+    assert normalize_provider_usage(usage) == UsageAmount(
+        prompt_tokens=100, completion_tokens=20, cached_prompt_tokens=40, reasoning_tokens=5)
+    assert normalize_provider_usage(dict(usage, cached_prompt_tokens=30)) is None
+    assert normalize_provider_usage(dict(usage, completion_tokens_details={"text_tokens": 20, "reasoning_tokens": 5})) is None
+    assert normalize_provider_usage(dict(usage, prompt_tokens_details={"text_tokens": 101, "cached_tokens": 40})) is None
+    assert normalize_provider_usage(dict(usage, completion_tokens_details={"text_tokens": True, "reasoning_tokens": 0})) is None
+    # Text modality does not negate a separately reported, valid cache count.
+    assert normalize_provider_usage(dict(usage, prompt_tokens_details={"text_tokens": 100})).cached_prompt_tokens == 40
+
+
+@pytest.mark.parametrize("total", [6057, 6059, -1, True])
+def test_text_only_details_do_not_override_a_contradictory_total(total):
+    usage = {"prompt_tokens": 5969, "completion_tokens": 89, "total_tokens": total,
+             "prompt_tokens_details": {"text_tokens": 5969}, "completion_tokens_details": {"text_tokens": 89}}
+    assert normalize_provider_usage(usage) is None
 
 
 def test_paid_calls_fail_closed_without_limit_rates_or_pricing_version():

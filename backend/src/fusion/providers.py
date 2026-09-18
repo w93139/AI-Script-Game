@@ -7,6 +7,7 @@ key or fall back across providers.
 from __future__ import annotations
 
 from dataclasses import dataclass
+import json
 from typing import Any
 
 
@@ -48,6 +49,21 @@ class PlayerProviderProfile:
     pricing_env_prefix: str
     request_contract_version: str
 
+    def prompt_for_wire(self, prompt: str, schema: dict[str, Any] | None = None) -> str:
+        # DTMaaS requires the literal JSON format name in messages, including
+        # when response_format supplies a schema. This is part of the Ant
+        # request contract; historical providers keep their exact prompts.
+        if self.name == "ant_digital":
+            instruction = "\n请严格只输出 JSON 对象，遵循要求的字段和引用约束。"
+            if schema is not None:
+                # Some compatible upstreams accept response_format without
+                # enforcing its schema. Repeat only the same authorized schema;
+                # local validation remains authoritative and rejects violations.
+                instruction += "\n输出必须符合此 JSON Schema：" + json.dumps(
+                    schema, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+            return prompt + instruction
+        return prompt
+
     def request_params(self, max_output_tokens: int, temperature: float) -> dict[str, Any]:
         common: dict[str, Any] = {
             "response_format": _player_response_format(),
@@ -67,6 +83,15 @@ class PlayerProviderProfile:
                 "enable_thinking": False,
                 "preserve_thinking": False,
             }
+        elif self.name == "ant_digital":
+            # DTMaaS forwards Qwen's OpenAI-compatible contract. Disable search
+            # as well as thinking: game knowledge comes only from our projection.
+            common["max_tokens"] = max_output_tokens
+            common["extra_body"] = {
+                "enable_thinking": False,
+                "enable_search": False,
+                "provider": {"allow_fallbacks": False},
+            }
         else:  # Defensive: registry entries must always have an explicit contract.
             raise ValueError("unsupported Fusion player provider")
         return common
@@ -76,10 +101,24 @@ class PlayerProviderProfile:
         # Bailian documents that actual output can exceed the requested maximum
         # by up to 10 tokens.  Six extra tokens keep the reservation arithmetic
         # simple while still covering that tolerance conservatively.
-        return max_output_tokens + (16 if self.name == "aliyun_bailian" else 0)
+        return max_output_tokens + (16 if self.name in {"aliyun_bailian", "ant_digital"} else 0)
 
 
 PLAYER_PROVIDER_PROFILES: dict[str, PlayerProviderProfile] = {
+    "ant_digital": PlayerProviderProfile(
+        name="ant_digital",
+        api_key_env="ANT_MAAS_API_KEY",
+        base_url_env="ANT_MAAS_BASE_URL",
+        model_env="ANT_MAAS_MODEL",
+        default_base_url="https://maas-api.antdigital.com/v1",
+        # DTMaaS exposes this public model ID rather than a dated Qwen release.
+        # It is an alias, not an immutable upstream model revision.
+        default_model="qwen3.6-plus",
+        allowed_base_urls=frozenset({"https://maas-api.antdigital.com/v1"}),
+        allowed_models=frozenset({"qwen3.6-plus"}),
+        pricing_env_prefix="ANT_MAAS_QWEN",
+        request_contract_version="ant-chat-qwen36-v2",
+    ),
     "volcengine_ark": PlayerProviderProfile(
         name="volcengine_ark",
         api_key_env="ARK_API_KEY",
@@ -111,3 +150,15 @@ PLAYER_PROVIDER_PROFILES: dict[str, PlayerProviderProfile] = {
 def get_player_provider_profile(name: str) -> PlayerProviderProfile | None:
     """Resolve an exact profile; unknown values never fall back to a default."""
     return PLAYER_PROVIDER_PROFILES.get(name)
+
+
+def window_wire_profile(model: dict[str, Any] | None) -> PlayerProviderProfile | None:
+    """Use the frozen Ant v2 wire measurement only for that exact binding.
+
+    Historical providers and Ant v1 retain their original context selection;
+    changing the current process configuration must not change old event hashes.
+    """
+    if (model and model.get("provider") == "ant_digital"
+            and model.get("provider_contract") == "ant-chat-qwen36-v2"):
+        return PLAYER_PROVIDER_PROFILES["ant_digital"]
+    return None

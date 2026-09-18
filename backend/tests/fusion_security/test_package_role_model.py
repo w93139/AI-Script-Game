@@ -39,7 +39,7 @@ def model_case(*, provider="volcengine_ark", result=None, **changes):
     return model, client, context, model.prepare(context, "你可以提供哪些相关资料？")
 
 
-@pytest.mark.parametrize("provider", ["volcengine_ark", "aliyun_bailian"])
+@pytest.mark.parametrize("provider", ["volcengine_ark", "aliyun_bailian", "ant_digital"])
 def test_package_role_model_has_one_provider_request_and_known_usage(provider):
     model, client, context, prepared = model_case(provider=provider)
     assert model.available and model.unavailable_reason is None
@@ -53,8 +53,13 @@ def test_package_role_model_has_one_provider_request_and_known_usage(provider):
     if provider == "volcengine_ark":
         assert params["max_tokens"] == 1000 and params["extra_body"] == {"thinking": {"type": "disabled"}}
         assert prepared["output_tokens"] == 1000
-    else:
+    elif provider == "aliyun_bailian":
         assert params["max_completion_tokens"] == 1000 and params["extra_body"] == {"enable_thinking": False, "preserve_thinking": False}
+        assert prepared["output_tokens"] == 1016
+    else:
+        assert params["max_tokens"] == 1000
+        assert params["extra_body"] == {"enable_thinking": False, "enable_search": False,
+                                        "provider": {"allow_fallbacks": False}}
         assert prepared["output_tokens"] == 1016
     assert model.metadata()["max_attempts"] == 1  # legacy settings.retries=3 cannot cause a retry
 
