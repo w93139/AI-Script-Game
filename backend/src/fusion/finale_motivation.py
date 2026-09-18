@@ -22,6 +22,12 @@ FINALE_BINDING_CONTRACT = 'package-text-play-binding/1.3'
 COMMAND = 'package-finale-motivation-command/1.0'
 START = 'package-finale-motivation-start/1.0'
 OUTPUT_TOKENS = 192
+
+
+def finale_output_tokens(policy):
+    from src.fusion.finale_evidence import POLICY, OUTPUT_TOKENS as EVIDENCE_OUTPUT_TOKENS
+    return EVIDENCE_OUTPUT_TOKENS if policy == POLICY else OUTPUT_TOKENS
+
 SKIP_REASONS = {'MODEL_UNAVAILABLE', 'INPUT_UNAVAILABLE', 'BUDGET_EXCEEDED', 'QUESTION_LIMIT', 'EVENT_LIMIT'}
 
 
@@ -46,7 +52,7 @@ class FinaleMotivationMixin:
             raise play_error('FINALE_MOTIVATION_POLICY_INVALID')
         self.finale_policy = policy
         self.finale_model = FinaleMotivationModel(client=getattr(self.model, 'client', None),
-            settings=replace(full_settings, max_output_tokens=OUTPUT_TOKENS) if full_settings else None,
+            settings=replace(full_settings, max_output_tokens=finale_output_tokens(policy)) if full_settings else None,
             policy=policy or FINALE_MOTIVATION_POLICY)
 
     def _finale_model_for_policy(self, policy):
@@ -55,7 +61,8 @@ class FinaleMotivationMixin:
         if policy == self.finale_model.policy:
             return self.finale_model
         return FinaleMotivationModel(client=self.finale_model.client,
-                                     settings=self.finale_model.settings, policy=policy)
+                                     settings=replace(self.finale_model.settings, max_output_tokens=finale_output_tokens(policy))
+                                     if self.finale_model.settings else None, policy=policy)
 
     @staticmethod
     def _finale_event_count(state):
@@ -69,8 +76,9 @@ class FinaleMotivationMixin:
     def _finale_base(binding):
         base = {**binding['model'], 'max_input_bytes': binding['full_input']['max_input_bytes']}
         original, reserved = base['max_output_tokens'], base['reserved_output_tokens']
-        base.update(max_output_tokens=OUTPUT_TOKENS,
-            reserved_output_tokens=reserved - original + OUTPUT_TOKENS if type(original) is int and type(reserved) is int else None)
+        limit = finale_output_tokens(binding['finale_motivation_policy'])
+        base.update(max_output_tokens=limit,
+            reserved_output_tokens=reserved - original + limit if type(original) is int and type(reserved) is int else None)
         return base
 
     @staticmethod
@@ -89,7 +97,7 @@ class FinaleMotivationMixin:
             'package_hash': binding['package_hash'], 'revision': state.revision if revision is None else revision,
             'character': source['character'], 'current_phase': source['current_phase'],
             'materials': public, 'discussion': sorted(claims, key=lambda c: c['sequence'])}
-        if binding['finale_motivation_policy'] in ('finale-motivation/1.1', 'finale-motivation/1.2', 'finale-motivation/1.3', 'finale-motivation/1.4'):
+        if binding['finale_motivation_policy'] in ('finale-motivation/1.1', 'finale-motivation/1.2', 'finale-motivation/1.3', 'finale-motivation/1.4', 'finale-motivation/1.5'):
             context['schema_version'] = binding['finale_motivation_policy'].replace('finale-motivation/', 'finale-motivation-context/')
             completed = state.engine.state()['completed_action_ids']
             actions = {a['id']: a['label'] for a in state.engine._package['mechanics']['actions'] if a['id'] in completed}
