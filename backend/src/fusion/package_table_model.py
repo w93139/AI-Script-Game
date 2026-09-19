@@ -23,6 +23,8 @@ from src.fusion.located_evidence import (
     source_evidence_projection, source_wire_context,
 )
 
+from src.fusion.finale_reasoning import (reasoning_policy,
+    normalize_reasoning_usage, reasoning_usage_error)
 from src.fusion.finale_question_scopes import SCOPES_POLICY, ScopeQuestion, available_scopes, apply_scopes
 from src.fusion.scoped_table_evidence import (
     OPTION_TEXT_POLICY, ScopedEvidenceAssessment, scoped_evidence_projection,
@@ -35,8 +37,9 @@ REASONED_MODEL_CONTRACT = 'package-table-model/1.2'
 EVIDENCE_MODEL_CONTRACT = 'package-table-model/1.3'
 LOCATED_MODEL_CONTRACT = 'package-table-model/1.4'
 SCOPED_MODEL_CONTRACT = 'package-table-model/1.5'
+BOUNDED_MODEL_CONTRACT = 'package-table-model/1.6'
 TABLE_MODEL_CONTRACTS = (MODEL_CONTRACT, BOUND_MODEL_CONTRACT, REASONED_MODEL_CONTRACT,
-                         EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT)
+                         EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT)
 EVIDENCE_ORIGIN_POLICY = 'completed-visible-evidence-origins/1.0'
 ANSWER_BINDING_POLICY = 'per-question-options-and-limit/1.0'
 PROMPT = '''你是剧本杀中指定的一席，现在提交一次正式决定。
@@ -86,7 +89,7 @@ vote 的 accusation_id 仅合法身份或 null，trust_character_id 仅另一席
 def table_prompt(version, action=None):
     if version not in TABLE_MODEL_CONTRACTS:
         raise ValueError('TABLE_MODEL_VERSION_INVALID')
-    if version == SCOPED_MODEL_CONTRACT:
+    if version in (SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT):
         return SCOPED_PROMPT if action in (None, 'SEAL_FINALE') else REASONED_PROMPT
     if version == LOCATED_MODEL_CONTRACT:
         return LOCATED_PROMPT if action in (None, 'SEAL_FINALE') else REASONED_PROMPT
@@ -96,14 +99,14 @@ def table_prompt(version, action=None):
 
 
 def table_wire_context(context, version):
-    if version not in (EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT) or context['action'] != 'SEAL_FINALE':
+    if version not in (EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT) or context['action'] != 'SEAL_FINALE':
         return context
-    located = version in (LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT)
+    located = version in (LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT)
     wire = source_wire_context(context) if located else evidence_wire_context(context)
     wire['schema_version'] = ('package-table-context/1.3' if version == LOCATED_MODEL_CONTRACT
                               else 'package-table-context/1.1')
     wire['passage_policy'] = SOURCE_POLICY if located else PASSAGE_POLICY
-    if version == SCOPED_MODEL_CONTRACT:
+    if version in (SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT):
         wire['schema_version'] = 'package-table-context/1.5'
         wire['questions'] = apply_scopes(context['questions'], context['materials'], context['question_scopes'])
         originals = {q['id']: q['prompt'] for q in context['questions']}
@@ -206,7 +209,7 @@ class ScopedTableContext(LocatedTableContext):
 
 
 def _table_context_model(version, action):
-    if version == SCOPED_MODEL_CONTRACT and action == 'SEAL_FINALE':
+    if version in (SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT) and action == 'SEAL_FINALE':
         return ScopedTableContext
     return LocatedTableContext if version == LOCATED_MODEL_CONTRACT and action == 'SEAL_FINALE' else TableContext
 
@@ -220,13 +223,13 @@ def table_metadata(base, version=MODEL_CONTRACT):
     result = {**base, 'schema_version': version, 'prompt_hash': sha256(table_prompt(version).encode()).hexdigest(),
             'context_policy': WINDOW_POLICY,
             'schema_hash': content_hash({k: v.model_json_schema() for k, v in OUTPUT_MODELS.items()})}
-    if version in (BOUND_MODEL_CONTRACT, REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT):
+    if version in (BOUND_MODEL_CONTRACT, REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT):
         result.update(answer_binding_policy=ANSWER_BINDING_POLICY,
                       answer_schema_compaction_policy='same-option-set-and-limit/1.0',
                       input_measure_policy='validated-context/1.0')
     if version == REASONED_MODEL_CONTRACT:
         result['finale_reasoning_policy'] = 'separate-identity-body-events/1.0'
-    if version in (EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT):
+    if version in (EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT):
         result.update(finale_reasoning_policy='separate-identity-body-events/1.0',
                       evidence_policy=EVIDENCE_POLICY, passage_policy=PASSAGE_POLICY,
                       finale_context_contract='package-table-context/1.1',
@@ -234,7 +237,7 @@ def table_metadata(base, version=MODEL_CONTRACT):
                       input_measure_policy='lossless-passage-wire/1.0',
                       schema_hash=content_hash({k: (EvidenceAssessment if k == 'SEAL_FINALE' else v).model_json_schema()
                                                 for k, v in OUTPUT_MODELS.items()}))
-    if version in (LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT):
+    if version in (LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT):
         result.update(evidence_origin_policy=EVIDENCE_ORIGIN_POLICY,
                       passage_policy=SOURCE_POLICY,
                       assessment_contract='table-evidence-assessment/1.1',
@@ -242,13 +245,17 @@ def table_metadata(base, version=MODEL_CONTRACT):
                       finale_context_contract='package-table-context/1.3',
                       schema_hash=content_hash({k: (SourceEvidenceAssessment if k == 'SEAL_FINALE' else v).model_json_schema()
                                                 for k, v in OUTPUT_MODELS.items()}))
-    if version == SCOPED_MODEL_CONTRACT:
+    if version in (SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT):
         result.update(question_scope_policy=SCOPES_POLICY, option_text_policy=OPTION_TEXT_POLICY,
                       assessment_contract='table-evidence-assessment/1.2',
                       source_context_contract='package-table-context/1.4',
                       finale_context_contract='package-table-context/1.5',
                       schema_hash=content_hash({k: (ScopedEvidenceAssessment if k == 'SEAL_FINALE' else v).model_json_schema()
                                                 for k, v in OUTPUT_MODELS.items()}))
+    if version == BOUNDED_MODEL_CONTRACT:
+        policy = reasoning_policy(base['max_output_tokens']) if base.get('max_output_tokens') is not None else None
+        result.update(thinking_mode='bounded_seal_only', reasoning_policy=policy,
+                      reserved_output_tokens=policy['reserved_output_tokens'] if policy else None)
     return result
 
 
@@ -277,11 +284,11 @@ def validate_table_decision(output, context):
 def output_schema(context, version=MODEL_CONTRACT):
     if version not in TABLE_MODEL_CONTRACTS:
         raise ValueError('TABLE_MODEL_VERSION_INVALID')
-    if version in (LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT):
+    if version in (LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT):
         context = _table_context_model(version, context['action']).model_validate(context).model_dump()
-    evidence = version in (EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT) and context['action'] == 'SEAL_FINALE'
+    evidence = version in (EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT) and context['action'] == 'SEAL_FINALE'
     if evidence:
-        schema = (scoped_evidence_output_schema(context) if version == SCOPED_MODEL_CONTRACT
+        schema = (scoped_evidence_output_schema(context) if version in (SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT)
                   else source_evidence_output_schema(context) if version == LOCATED_MODEL_CONTRACT
                   else evidence_output_schema(context))
     else:
@@ -336,7 +343,7 @@ def table_context_window(context, max_bytes, version=MODEL_CONTRACT, provider_mo
         raise ValueError('TABLE_MODEL_VERSION_INVALID')
     profile = window_wire_profile(provider_model)
     def measure(value):
-        if profile or version in (BOUND_MODEL_CONTRACT, REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT):
+        if profile or version in (BOUND_MODEL_CONTRACT, REASONED_MODEL_CONTRACT, EVIDENCE_MODEL_CONTRACT, LOCATED_MODEL_CONTRACT, SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT):
             # Match prepare exactly, after history has been bounded. The old
             # version retains its original raw-context measurement.
             value = _table_context_model(version, value['action']).model_validate(value).model_dump()
@@ -427,7 +434,7 @@ class EvidencePackageTableModel(ReasonedPackageTableModel):
         context = self._prepared_payload(frozen)['context']
         if context['action'] != 'SEAL_FINALE':
             return super()._read_output(raw, frozen)
-        projection = (scoped_evidence_projection if self.model_contract == SCOPED_MODEL_CONTRACT else
+        projection = (scoped_evidence_projection if self.model_contract in (SCOPED_MODEL_CONTRACT, BOUNDED_MODEL_CONTRACT) else
                       source_evidence_projection if self.model_contract == LOCATED_MODEL_CONTRACT else evidence_projection)
         decision, assessment = projection(parse_package_json(raw.encode()), context)
         assessment = validate_evidence_decision(decision, assessment, context)
@@ -440,3 +447,59 @@ class LocatedPackageTableModel(EvidencePackageTableModel):
 
 class ScopedPackageTableModel(EvidencePackageTableModel):
     model_contract = SCOPED_MODEL_CONTRACT
+
+
+class BoundedScopedPackageTableModel(ScopedPackageTableModel):
+    """Opt-in direct Bailian candidate. Only sealed sheets may use reasoning.
+
+    The provider caps total generation; visible-answer size is an acceptance
+    limit. Raw reasoning is neither returned nor added to future contexts.
+    """
+    model_contract = BOUNDED_MODEL_CONTRACT
+
+    def _config_reason(self):
+        reason = super()._config_reason()
+        if reason:
+            return reason
+        if (self.settings.provider != 'aliyun_bailian'
+                or self.settings.model != 'qwen3.7-flash-2026-07-15'):
+            return 'FINALE_REASONING_PROVIDER_UNSUPPORTED'
+        return None
+
+    def prepare(self, context, question='DECIDE'):
+        prepared = super().prepare(context, question)
+        policy = reasoning_policy(self.settings.max_output_tokens)
+        if context['action'] == 'SEAL_FINALE':
+            prepared['params']['max_completion_tokens'] = policy['max_completion_tokens']
+            prepared['params']['extra_body'].update(enable_thinking=True,
+                thinking_budget=policy['reasoning_limit'], preserve_thinking=False, enable_search=False)
+            prepared['params']['stream'] = False
+        # Every table action shares the frozen maximum reservation. Non-seal
+        # actions keep their old disabled wire and may settle below this bound.
+        prepared['output_tokens'] = policy['reserved_output_tokens']
+        prepared['reasoning_policy'] = policy
+        return prepared
+
+    def _normalize_usage(self, raw):
+        # Missing reasoning details may still contain usable totals for billing.
+        # The separate response gate will never treat that as a valid sheet.
+        return normalize_reasoning_usage(raw) or super()._normalize_usage(raw)
+
+    def _reasoning_error(self, result, usage, prepared):
+        action = self._prepared_payload(prepared)['context']['action']
+        if action != 'SEAL_FINALE':
+            error = super()._reasoning_error(result, usage, prepared)
+            if error:
+                return error
+            if usage and usage.completion_tokens > self.profile.reserved_completion_tokens(self.settings.max_output_tokens):
+                return 'PACKAGE_ROLE_USAGE_EXCEEDS_RESERVATION'
+            return None
+        if usage is None:
+            return None  # The shared call path returns UNKNOWN and keeps reserve.
+        error = reasoning_usage_error(getattr(result, 'usage', None), usage,
+                                      self.settings.max_output_tokens)
+        if error:
+            return error
+        if getattr(result, 'reasoning_content', None) and usage.reasoning_tokens == 0:
+            return 'FINALE_REASONING_USAGE_MISMATCH'
+        return None

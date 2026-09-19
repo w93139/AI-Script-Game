@@ -211,7 +211,7 @@ class PackageRoleModel:
                     await asyncio.wait_for(sdk.close(), timeout=2)
                 except Exception:
                     pass
-        normalized = normalize_provider_usage(getattr(result, "usage", None))
+        normalized = self._normalize_usage(getattr(result, "usage", None))
         usage = normalized.to_metadata() if normalized is not None else None
         model = self.settings.model if getattr(result, "model", None) == self.settings.model else None
         error = None
@@ -219,8 +219,8 @@ class PackageRoleModel:
             error = "PACKAGE_ROLE_MODEL_MISMATCH"
         elif getattr(result, "tool_calls", None):
             error = "PACKAGE_ROLE_TOOLS_FORBIDDEN"
-        elif getattr(result, "reasoning_content", None) or (normalized is not None and normalized.reasoning_tokens):
-            error = "PACKAGE_ROLE_REASONING_FORBIDDEN"
+        elif reasoning_error := self._reasoning_error(result, normalized, frozen):
+            error = reasoning_error
         elif not self._finish_accepted(getattr(result, "finish_reason", None)):
             error = "PACKAGE_ROLE_OUTPUT_TRUNCATED"
         elif normalized is not None and (normalized.prompt_tokens > frozen["input_tokens"] or normalized.completion_tokens > frozen["output_tokens"]):
@@ -245,3 +245,11 @@ class PackageRoleModel:
 
     def _finish_accepted(self, reason: str | None) -> bool:
         return reason in (None, "stop")
+
+    def _normalize_usage(self, raw):
+        return normalize_provider_usage(raw)
+
+    def _reasoning_error(self, result, usage, prepared):
+        if getattr(result, 'reasoning_content', None) or (usage is not None and usage.reasoning_tokens):
+            return 'PACKAGE_ROLE_REASONING_FORBIDDEN'
+        return None
