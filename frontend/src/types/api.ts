@@ -25,7 +25,8 @@ export interface Release {
 }
 
 export type { PackagePlay as PlayView, PlayMaterial as Material,
-  CreatePackagePlayRequest as CreatePlayBody } from './packagePlay';
+  CreatePackagePlayRequest as CreatePlayBody, PackagePlayActionRequest as ActionBody,
+  PackagePlayAskRequest as AskBody, PackagePlaySpeakRequest as SpeakBody } from './packagePlay';
 
 export interface CreateSessionBody {
   release_id: number;

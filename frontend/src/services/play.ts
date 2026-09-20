@@ -1,12 +1,15 @@
 import { http } from "@/lib/http";
 import { currentToken } from './auth';
 import type {
+  ActionBody,
+  AskBody,
   CreatePlayBody,
   CreateSessionBody,
   LibraryResult,
   OpeningSession,
   PlayView,
   Release,
+  SpeakBody,
 } from "@/types/api";
 
 interface Envelope<T> {
@@ -54,6 +57,24 @@ export function createPlay(body: CreatePlayBody) {
 
 export function getPlay(playId: string) {
   return unwrap<PlayView>(http.get(`/api/fusion/package-plays/${playId}`));
+}
+
+export function act(playId: string, body: ActionBody) {
+  return unwrap<PlayView>(
+    http.post(`/api/fusion/package-plays/${playId}/actions`, body),
+  );
+}
+
+export function ask(playId: string, body: AskBody) {
+  return unwrap<PlayView>(
+    http.post(`/api/fusion/package-plays/${playId}/ask`, body),
+  );
+}
+
+export function speak(playId: string, body: SpeakBody) {
+  return unwrap<PlayView>(
+    http.post(`/api/fusion/package-plays/${playId}/discussion`, body),
+  );
 }
 
 export function listLibrary(offset = 0, limit = 20) {
