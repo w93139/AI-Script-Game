@@ -44,14 +44,6 @@ class SelectedSmokeConfig:
     model: str
     pricing: BudgetPolicy
 
-@dataclass(frozen=True)
-class SelectedSmokeConfig:
-    profile: PlayerProviderProfile
-    api_key: str
-    base_url: str
-    model: str
-    pricing: BudgetPolicy
-
 def parse_confirmed_cost(raw: str) -> Decimal:
     try:
         amount = Decimal(raw)

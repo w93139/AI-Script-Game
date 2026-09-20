@@ -1,0 +1,51 @@
+# 离线自动检查：每次推送到 main 或发起 PR 时运行。
+#
+# 只跑仓库自带的离线检查，不读取 .env、不连数据库、不调用付费模型。
+# 后端使用项目约定的 scripts/test_fusion_security.py 运行器（它会清空密钥环境
+# 并禁止网络），而不是裸跑全量 pytest，避免在 CI 中意外初始化真实应用。
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  backend-offline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+      - name: Install backend dependencies
+        working-directory: backend
+        run: uv sync --group dev
+      - name: Dev preflight
+        run: backend/.venv/bin/python scripts/dev_preflight.py
+      - name: Preflight self-test
+        run: backend/.venv/bin/python -m unittest discover -s scripts -p 'test_dev_preflight.py'
+      - name: Offline Fusion security suite
+        run: backend/.venv/bin/python backend/scripts/test_fusion_security.py
+      - name: Check for whitespace errors
+        run: git diff --check HEAD~1..HEAD || true
+
+  frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Lint and typecheck
+        working-directory: frontend
+        run: npm run check
+      - name: Tests
+        working-directory: frontend
+        run: npm test

@@ -1,7 +1,6 @@
 """LLM服务抽象层"""
 import json
 import logging
-import re
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, AsyncGenerator, Optional
 from dataclasses import dataclass
@@ -41,32 +40,6 @@ class StreamChunk:
     type: str  # "reasoning" | "content"
     text: str
 
-
-_THINK_TAG_RE = re.compile(r"<think>(.*?)</think>", re.DOTALL)
-
-
-def split_think_tags(text: str) -> List[StreamChunk]:
-    """把包含 <think>...</think> 标签的文本拆分为 reasoning/content 片段。
-
-    模型把思考过程内联在 content 里时（无 reasoning_content 字段），
-    用此函数拆出思考部分以便前端区分展示。无标签时整体视为 content。
-    """
-    if not text or "<think>" not in text:
-        return [StreamChunk(type="content", text=text)] if text else []
-    chunks: List[StreamChunk] = []
-    pos = 0
-    for match in _THINK_TAG_RE.finditer(text):
-        before = text[pos:match.start()].strip()
-        if before:
-            chunks.append(StreamChunk(type="content", text=before))
-        thinking = match.group(1).strip()
-        if thinking:
-            chunks.append(StreamChunk(type="reasoning", text=thinking))
-        pos = match.end()
-    rest = text[pos:].strip()
-    if rest:
-        chunks.append(StreamChunk(type="content", text=rest))
-    return chunks
 
 def _parse_openai_tool_calls(message) -> Optional[List[ToolCall]]:
     """把 OpenAI 响应 message.tool_calls 解析为 ToolCall 列表。

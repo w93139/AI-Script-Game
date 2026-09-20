@@ -11,6 +11,7 @@ from ...core.script_authoring_policy import reject_legacy_publication
 
 if TYPE_CHECKING:
     from ...schemas.script import Script, ScriptCharacter, ScriptEvidence, ScriptLocation, BackgroundStory
+    from ...schemas.game_phase import GamePhase
 from ..models.script_model import ScriptDBModel
 from ..models.character import CharacterDBModel
 from ..models.evidence import EvidenceDBModel
