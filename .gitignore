@@ -82,3 +82,7 @@ Thumbs.db
 /.runtime/
 /.transcripts/
 /.task_outputs/
+
+# 本机 demo 启动器配置（含私有路径，禁止提交）
+/demo.local.json
+/demo.*.local.json
