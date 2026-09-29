@@ -97,14 +97,14 @@ class FinaleMotivationMixin:
             'package_hash': binding['package_hash'], 'revision': state.revision if revision is None else revision,
             'character': source['character'], 'current_phase': source['current_phase'],
             'materials': public, 'discussion': sorted(claims, key=lambda c: c['sequence'])}
-        if binding['finale_motivation_policy'] in ('finale-motivation/1.1', 'finale-motivation/1.2', 'finale-motivation/1.3', 'finale-motivation/1.4', 'finale-motivation/1.5', 'finale-motivation/1.6', 'finale-motivation/1.7'):
+        if binding['finale_motivation_policy'] in ('finale-motivation/1.1', 'finale-motivation/1.2', 'finale-motivation/1.3', 'finale-motivation/1.4', 'finale-motivation/1.5', 'finale-motivation/1.6', 'finale-motivation/1.7', 'finale-motivation/1.8'):
             context['schema_version'] = binding['finale_motivation_policy'].replace('finale-motivation/', 'finale-motivation-context/')
             completed = state.engine.state()['completed_action_ids']
             actions = {a['id']: a['label'] for a in state.engine._package['mechanics']['actions'] if a['id'] in completed}
             visible = {m['id'] for m in public if m['collection'] == 'evidence'}
             context['evidence_origins'] = [{'id':m['id'], 'labels':[actions[a] for a in m['release'].get('required_action_ids', []) if a in actions]}
                 for m in state.engine._package['evidence'] if m['id'] in visible]
-        if binding['finale_motivation_policy'] == 'finale-motivation/1.7':
+        if binding['finale_motivation_policy'] in ('finale-motivation/1.7', 'finale-motivation/1.8'):
             context['public_characters'] = [
                 {'id': item['id'], 'name': item['name']}
                 for item in state.engine._package['characters']]
