@@ -75,6 +75,7 @@ MAX_QUESTIONS = 30
 MAX_STATEMENTS = 100
 DISCUSSION_EVENT_CONTRACT = "package-text-play-event/1.1"
 PLAY_PATTERN = r"play-[0-9a-f]{32}"
+FINALE_110_DISPLAY_FALLBACK = '【系统兜底】我暂时保留自己的判断。'
 
 
 class PackagePlayError(ValueError):
@@ -1443,6 +1444,26 @@ class PackagePlayService(FinaleMotivationMixin):
                 or state.guided_actions or self._single_enabled(binding, state)):
             capture_workspace(state)
             result['round_workspace'] = project_workspace(state, result)
+        # Only the final HTTP view carries a visible placeholder. Replay, events,
+        # vote disclosure and scoring have already used the original empty text.
+        if (binding.get('finale_motivation_policy') == 'finale-motivation/1.10'
+                and 'finale_speeches' in result):
+            stored_speeches = {entry['character_id']: entry for entry in state.finale_speeches}
+            fallback_actors = {actor for actor, entry in stored_speeches.items()
+                               if entry['status'] == 'EMPTY' and entry['text'] == ''}
+            for shown in result['finale_speeches']:
+                if shown['character_id'] in fallback_actors:
+                    shown['text'] = FINALE_110_DISPLAY_FALLBACK
+                    shown['fallback'] = True
+            # The ending page reads vote_disclosure. Its stored source remains
+            # empty; only these already-computed public rows gain a placeholder.
+            for rows in (
+                    (result['full_game'].get('finale') or {}).get('vote_disclosure', []),
+                    (result['full_game'].get('result') or {}).get('vote_disclosure', [])):
+                for shown in rows:
+                    if shown['character_id'] in fallback_actors and shown['motivation'] == '':
+                        shown['motivation'] = FINALE_110_DISPLAY_FALLBACK
+                        shown['fallback'] = True
         return result
 
     def _single_catalog(self, binding):
