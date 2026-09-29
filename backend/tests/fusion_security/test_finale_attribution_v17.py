@@ -92,6 +92,9 @@ def test_prior_prompt_output_and_context_schema_hashes_are_frozen():
         '1.7': ('a4664c89d3bc0f88e906827540f90d9e6bddb264ea2789c79e25b173df51d99f',
                 '8d67591883b7e81b8060e2f673a8edccbb268e12287e9e35cf1b22c3741a1534',
                 'dddd44a7d82cebf8cdca009a8555172e23adbabc3d28ac77813878510693c081'),
+        '1.8': ('a4664c89d3bc0f88e906827540f90d9e6bddb264ea2789c79e25b173df51d99f',
+                '8d67591883b7e81b8060e2f673a8edccbb268e12287e9e35cf1b22c3741a1534',
+                'e276cddb0bb9d1ecd7ed490b7de6a5022a3b766da20cb8fbe01b2f952b5f089e'),
     }
     for version, hashes in expected.items():
         policy = 'finale-motivation/' + version
