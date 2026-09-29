@@ -15,8 +15,8 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "人生海海 · Demo",
-  description: "单真人 AI 剧本杀 Demo",
+  title: "人生海海",
+  description: "单真人 AI 剧本杀",
 };
 
 export default function RootLayout({
