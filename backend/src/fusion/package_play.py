@@ -1451,9 +1451,25 @@ class PackagePlayService(FinaleMotivationMixin):
             stored_speeches = {entry['character_id']: entry for entry in state.finale_speeches}
             fallback_actors = {actor for actor, entry in stored_speeches.items()
                                if entry['status'] == 'EMPTY' and entry['text'] == ''}
+            # The public disclosure exists only after all five seats seal.
+            # Reading an individual sealed sheet here would reveal votes early.
+            disclosed = {entry['character_id']: entry for entry in
+                         (result['full_game'].get('finale') or {}).get('vote_disclosure', [])}
+
+            def display_fallback(actor):
+                vote = disclosed.get(actor)
+                if vote is None or 'voted_for' not in vote:
+                    return FINALE_110_DISPLAY_FALLBACK, 'generic'
+                if vote['voted_for'] is None:
+                    return '【系统兜底】我选择弃权。', 'vote'
+                label = vote.get('voted_for_label')
+                if isinstance(label, str) and label:
+                    return f'【系统兜底】我怀疑{label}。', 'vote'
+                return FINALE_110_DISPLAY_FALLBACK, 'generic'
+
             for shown in result['finale_speeches']:
                 if shown['character_id'] in fallback_actors:
-                    shown['text'] = FINALE_110_DISPLAY_FALLBACK
+                    shown['text'], shown['fallback_source'] = display_fallback(shown['character_id'])
                     shown['fallback'] = True
             # The ending page reads vote_disclosure. Its stored source remains
             # empty; only these already-computed public rows gain a placeholder.
@@ -1462,7 +1478,7 @@ class PackagePlayService(FinaleMotivationMixin):
                     (result['full_game'].get('result') or {}).get('vote_disclosure', [])):
                 for shown in rows:
                     if shown['character_id'] in fallback_actors and shown['motivation'] == '':
-                        shown['motivation'] = FINALE_110_DISPLAY_FALLBACK
+                        shown['motivation'], shown['fallback_source'] = display_fallback(shown['character_id'])
                         shown['fallback'] = True
         return result
 
