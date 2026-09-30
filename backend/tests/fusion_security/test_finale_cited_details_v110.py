@@ -29,6 +29,10 @@ def test_v110_prompt_schema_and_prior_v19_hashes_are_frozen():
     assert PROMPTS['finale-motivation/1.10'].startswith(PROMPTS['finale-motivation/1.9'])
     assert '数字或年份' in PROMPTS['finale-motivation/1.10']
     assert '点名某人说、称、证实' in PROMPTS['finale-motivation/1.10']
+    assert '换一个被引来源直接支持的疑点，不要因此整句放弃' in PROMPTS['finale-motivation/1.10']
+    assert '无法引用就省略该数字或留空' not in PROMPTS['finale-motivation/1.10']
+    assert '无法核对就省略该点名说法或留空' not in PROMPTS['finale-motivation/1.10']
+    assert sha256(PROMPTS['finale-motivation/1.10'].encode()).hexdigest() == '5413f1528b909a86c4932da8bf8e458224a97ec894d6f3a481de737aacc989c4'
     assert _finale_output_model('finale-motivation/1.10') is _finale_output_model('finale-motivation/1.9')
     assert _finale_context_model(v110_context()).model_json_schema()['properties']['schema_version']['const'] == 'finale-motivation-context/1.10'
     assert sha256(PROMPTS['finale-motivation/1.9'].encode()).hexdigest() == 'f14fd80a4cfeb9db89c164637681fc3fea3a15f9b4247d2f3409ec95acf2a659'
